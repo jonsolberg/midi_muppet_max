@@ -185,6 +185,9 @@ kbd{font:600 .8rem ui-monospace,monospace;background:var(--chip);border:1px soli
         <div class="toolbar"><button id="btnFlash">Install firmware</button></div>
         <progress id="flashProgress" value="0" max="100" hidden></progress>
         <div class="msg" id="flashMsg"></div>
+        <details id="logBox" hidden><summary>Technical log – send this if something goes wrong</summary>
+          <pre id="log" style="max-height:260px;overflow:auto;font:12px/1.4 ui-monospace,monospace;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px;white-space:pre-wrap"></pre>
+          <button id="btnCopyLog">Copy log</button></details>
       </div>
     </div>
 
@@ -529,6 +532,14 @@ $('importFile').onchange = async e => {
 function msg(id, text, kind) { const m = $(id); m.textContent = text; m.className = 'msg' + (kind ? ' ' + kind : ''); }
 function status(text, kind) { $('statusText').textContent = text; $('status').className = 'status' + (kind ? ' ' + kind : ''); }
 const sleep = ms => new Promise(r => setTimeout(r, ms));
+const LOG = [], T0 = Date.now();
+function log(s) {
+  const line = ((Date.now() - T0) / 1000).toFixed(2).padStart(7) + '  ' + s;
+  LOG.push(line); if (LOG.length > 2000) LOG.shift();
+  const el = document.getElementById('log'); if (el) { el.textContent = LOG.join('\n'); el.scrollTop = el.scrollHeight; }
+  const box = document.getElementById('logBox'); if (box) box.hidden = false;
+  console.log('[MM]', s);
+}
 
 // ------------------------------------------------------------ serial: setup protocol
 const pedal = {
@@ -561,13 +572,14 @@ const pedal = {
   },
 
   onLine(line) {
+    log('pedal: ' + (line.length > 80 ? line.slice(0, 80) + '…' : line));
     const m = line.match(/^P ([1-4]) ([01])$/);
     if (m) { buttonEvent(+m[1] - 1, m[2] === '1'); return; }
     const w = this.waiters.findIndex(w => w.test(line));
     if (w >= 0) { const [x] = this.waiters.splice(w, 1); clearTimeout(x.timer); x.resolve(line); }
   },
 
-  send(text) { return this.writer.write(new TextEncoder().encode(text + '\n')); },
+  send(text) { if (text !== 'MM?') log('editor: ' + (text.length > 80 ? text.slice(0, 80) + '…' : text)); return this.writer.write(new TextEncoder().encode(text + '\n')); },
 
   waitFor(test, ms) {
     return new Promise((resolve, reject) => {
@@ -611,7 +623,9 @@ async function connect() {
     let mhzPref = '16'; try { mhzPref = localStorage.getItem('mm-mhz') || $('board').value; } catch (e) {}
     const speeds = mhzPref === '8' ? [57600, 115200] : [115200, 57600];
     let line = null;
+    log('connect: ' + JSON.stringify(port.getInfo ? port.getInfo() : {}) + ', speeds ' + speeds.join('/'));
     for (const baud of speeds) {
+      log('connect: open at ' + baud + ' baud, restart the Arduino, say hello');
       await pedal.open(port, baud);
       await resetBoard(port);
       // Say hello until the firmware answers (it listens 1.5 s after the restart)
@@ -619,7 +633,7 @@ async function connect() {
       let answered = false;
       hello.then(() => answered = true, () => {});
       (async () => { for (let i = 0; i < 36 && !answered && pedal.writer; i++) { try { await pedal.send('MM?'); } catch (e) { break; } await sleep(110); } })();
-      try { line = await hello; break; } catch (e) { await pedal.close(); pedal.port = port; }
+      try { line = await hello; break; } catch (e) { log('connect: no answer at ' + baud); await pedal.close(); pedal.port = port; }
     }
     if (!line) throw new Error('timeout');
     const [, fw, mcu, size, mhz] = line.split(' ');
@@ -636,6 +650,7 @@ async function connect() {
     $('pedalInfo').innerHTML = `MIDI Muppet config firmware ${pedal.info.fw} · ${pedal.info.mcu === '168' ? 'ATmega168' : 'ATmega328P'} · ${pedal.info.mhz} MHz. The LED blinks green/red while the pedal is in setup mode.`;
     renderAll(); updateButtons();
   } catch (e) {
+    log('connect failed: ' + (e && e.message));
     await pedal.close(); pedal.port = null;
     status('Not connected', 'err');
     msg('pedalMsg', e.message === 'timeout'
@@ -749,14 +764,25 @@ class Stk500 {
   }
   async cmd(bytes, replyLen = 0, ms = 500) {
     this.q.length = 0;
+    const name = hex(bytes.slice(0, bytes[0] === 0x64 ? 4 : 4)) + (bytes.length > 4 ? '… (' + bytes.length + ' bytes)' : '');
     await this.writer.write(new Uint8Array([...bytes, 0x20]));
-    const r = await this.read(replyLen + 2, ms);
-    if (r[0] !== 0x14 || r[r.length - 1] !== 0x10) throw new Error('bootloader said ' + hex(r));
+    let r;
+    try { r = await this.read(replyLen + 2, ms); }
+    catch (e) { if (!this.quiet) log('stk ' + name + ' → no answer in ' + ms + ' ms (got ' + hex(this.q) + ')'); throw e; }
+    if (r[0] !== 0x14 || r[r.length - 1] !== 0x10) { log('stk ' + name + ' → ' + hex(r)); throw new Error('bootloader said ' + hex(r)); }
+    if (!this.quiet) log('stk ' + name + ' → ok' + (replyLen && replyLen <= 4 ? ' ' + hex(r.slice(1, -1)) : ''));
     return r.slice(1, -1);
   }
-  async sync() {
-    for (let i = 0; i < 8; i++) {
+  async sync(baud) {
+    for (let i = 0; i < 12; i++) {
+      if (i % 6 === 0) {          // a fresh restart every third try: a garbled byte can send the bootloader off to the old sketch
+        if (i) log('stk: restarting the Arduino again');
+        await resetBoard(this.port);
+        await sleep(baud === 19200 ? 250 : 100);
+        this.q.length = 0;
+      }
       try {
+        log('stk: sync attempt ' + (i + 1));
         await this.cmd([0x30], 0, 200);
         // Answers to earlier attempts may still be on their way: let them arrive, drop them, sync once more
         await sleep(150); this.q.length = 0;
@@ -779,12 +805,12 @@ async function flash() {
   let stk = null, done = false;
   try {
     // Nano with new bootloader: 115200, old Nano / Pro Mini 328P: 57600, Nano / Pro Mini 168: 19200
+    log('install: board ' + $('board').value + ' MHz, port ' + JSON.stringify(port.getInfo ? port.getInfo() : {}));
     for (const baud of [115200, 57600, 19200]) {
+      log('install: trying the bootloader at ' + baud + ' baud');
       stk = new Stk500(port);
       await stk.open(baud);
-      await resetBoard(port);
-      await sleep(baud === 19200 ? 200 : 60);
-      if (await stk.sync()) break;
+      if (await stk.sync(baud)) break;
       await stk.close(); stk = null;
     }
     if (!stk) throw new Error('No bootloader answered. Check the cable and that this is the Arduino\'s port, then try again.');
@@ -794,6 +820,8 @@ async function flash() {
     const mhz = $('board').value;
     const image = parseIntelHex(fw.hex[mhz]);
     msg('flashMsg', `Installing on ${fw.name} (${mhz} MHz)…`);
+    log(`install: ${fw.name}, ${image.length} bytes, ${Math.ceil(image.length / 128)} pages`);
+    stk.quiet = true;   // don't log every page
     await stk.cmd([0x50]);                                   // enter programming mode
     const PAGE = 128, pages = Math.ceil(image.length / PAGE);
     for (let p = 0; p < pages; p++) {
@@ -802,6 +830,7 @@ async function flash() {
       await stk.cmd([0x55, (addr >> 1) & 255, (addr >> 9) & 255]);       // word address
       await stk.cmd([0x64, 0, PAGE, 0x46, ...data], 0, 1000);           // program flash page
       prog.value = (p + 1) / pages * 70;
+      if (p % 16 === 0 || p === pages - 1) log(`install: wrote page ${p + 1}/${pages}`);
     }
     msg('flashMsg', 'Checking…');
     for (let p = 0; p < pages; p++) {
@@ -812,12 +841,14 @@ async function flash() {
       for (let i = 0; i < want.length; i++) if (got[i] !== want[i]) throw new Error('Check failed at byte ' + (addr + i) + '. Please try again.');
       prog.value = 70 + (p + 1) / pages * 30;
     }
+    log('install: all pages checked');
     await stk.cmd([0x51]);                                   // leave programming mode, start the firmware
     done = true;
     try { localStorage.setItem('mm-mhz', mhz); } catch (e) {}
     msg('flashMsg', `Firmware installed on the ${fw.name} (${mhz} MHz) ✓ Click “Connect pedal” to set it up.`, 'ok');
   } catch (e) {
-    msg('flashMsg', e.message.startsWith('timeout') || e.message.startsWith('bootloader') ? 'Installing failed (' + e.message + '). Unplug the USB cable, plug it in again and retry.' : e.message, 'err');
+    log('install failed: ' + e.message);
+    msg('flashMsg', e.message.startsWith('timeout') || e.message.startsWith('bootloader') ? 'Installing failed (' + e.message + '). Unplug the USB cable, plug it in again and retry. If it fails again, copy the technical log below and send it.' : e.message, 'err');
   }
   if (stk) await stk.close();
   pedal.port = port;           // remember the port for "Connect pedal"
@@ -826,6 +857,12 @@ async function flash() {
   setTimeout(() => prog.hidden = true, done ? 3000 : 0);
 }
 $('btnFlash').onclick = flash;
+$('btnCopyLog').onclick = async () => {
+  const text = 'MIDI Muppet editor log – ' + navigator.userAgent + '\n' + LOG.join('\n');
+  try { await navigator.clipboard.writeText(text); $('btnCopyLog').textContent = 'Copied ✓'; }
+  catch (e) { const r = document.createRange(); r.selectNodeContents($('log')); getSelection().removeAllRanges(); getSelection().addRange(r); }
+  setTimeout(() => $('btnCopyLog').textContent = 'Copy log', 2000);
+};
 
 // ------------------------------------------------------------ start
 try { const m = localStorage.getItem('mm-mhz'); if (m) $('board').value = m; } catch (e) {}
