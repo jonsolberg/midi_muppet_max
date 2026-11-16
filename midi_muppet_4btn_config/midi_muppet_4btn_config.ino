@@ -176,7 +176,7 @@ void defaultConfig() {
   cfg[P_FLAGS] = FLAG_LED_FEEDBACK | FLAG_HX_LOOPER;
   cfg[P_RED] = 64;
   cfg[P_LONG] = 80;  // 800 ms
-  for (uint8_t i = 0; i < 4; i++) cfg[P_POS + i] = i;
+  for (uint8_t i = 0; i < 4; i++) cfg[P_POS + i] = 3 - i;   // top row 4 3, bottom row 2 1 (editor picture only)
   const uint8_t progs[4][2] = {{1, 5}, {0, 4}, {3, 7}, {2, 6}};
   for (uint8_t b = 0; b < 4; b++) {
     setAction(b * 2, A_PC, 0, progs[b][0], 0, 0);

@@ -66,7 +66,7 @@ class Sim:
 NONE, PC, CC, TOGGLE, MOMENTARY, NEXT, PREV, HXTUNER = range(8)
 
 
-def blob(profile=0, channel=0, flags=3, red=64, long10=80, pos=(0, 1, 2, 3), actions=None):
+def blob(profile=0, channel=0, flags=3, red=64, long10=80, pos=(3, 2, 1, 0), actions=None):
     b = bytearray(b'M4') + bytes([1, profile, channel, flags, red, long10]) + bytes(pos)
     acts = actions or [(PC, 0, 1, 0, 0), (PC, 0, 5, 0, 0), (PC, 0, 0, 0, 0), (PC, 0, 4, 0, 0),
                        (PC, 0, 3, 0, 0), (PC, 0, 7, 0, 0), (PC, 0, 2, 0, 0), (PC, 0, 6, 0, 0)]

@@ -244,7 +244,7 @@ const act = (type, ch = 0, a = 0, b = 0, c = 0) => ({type, ch, a, b, c});
 
 function defaultConfig() {
   const progs = [[1, 5], [0, 4], [3, 7], [2, 6]];
-  return {profile: 0, channel: 0, ledMode: 'flash', ledInverted: false, idleGlow: false, looper: true, twoSwitches: false, red: 64, longMs: 800, pos: [0, 1, 2, 3],
+  return {profile: 0, channel: 0, ledMode: 'flash', ledInverted: false, idleGlow: false, looper: true, twoSwitches: false, red: 64, longMs: 800, pos: [3, 2, 1, 0],
           actions: progs.flatMap(([s, l]) => [act(T.PC, 0, s), act(T.PC, 0, l)])};
 }
 
@@ -507,7 +507,7 @@ $('hardware').onchange = e => {
   if (two === c.twoSwitches) return;
   c.twoSwitches = two;
   if (two) c.pos = [1, 0, 2, 3];   // UP on the right, DN on the left, like the original
-  else c.pos = [0, 1, 2, 3];
+  else c.pos = [3, 2, 1, 0];   // top row 4 3, bottom row 2 1
   if (state.sel >= nSwitches()) state.sel = 0;
   changed(); renderAll();
 };
