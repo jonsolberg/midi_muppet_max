@@ -47,6 +47,12 @@ class Sim:
 
     def reset(self): self.cmd('reset'); self.tx = b''
 
+    def duty(self, ms):
+        self.cmd(f'duty {ms}')
+        while True:
+            l = self.p.stdout.readline().strip()
+            if l.startswith('DUTY '): return float(l[5:])
+
     def green(self):
         self.cmd('led')
         while True:
@@ -110,7 +116,7 @@ def suite(elf, mcu, mhz):
 
     # --- setup mode
     hello = setup(s)
-    check('hello reply', hello.split(b'\r\n')[0], b'MM4 3 %s 53 %d' % (b'168' if '168' in mcu else b'328', mhz))
+    check('hello reply', hello.split(b'\r\n')[0], b'MM4 4 %s 53 %d' % (b'168' if '168' in mcu else b'328', mhz))
     s.send('R'); s.run(50)
     check('read default config', s.take().strip(), b'C ' + blob().hex().upper().encode())
     press(s, 3, 100)
@@ -223,9 +229,9 @@ def suite(elf, mcu, mhz):
     press(s, 2, 100)
     check('two switches: DN still works (looper record or previous preset)', s.take() in (b'\xB0\x3C\x7F', b'\xB0\x48\x00'), True)
     # --- LED: light while held, common anode LED (lit when the pin is LOW)
-    def led_setup(flags):
+    def led_setup(flags, red=255):
         setup(s)
-        s.send('W ' + blob(flags=flags).hex()); s.run(400); s.send('Q'); s.run(900); s.take()
+        s.send('W ' + blob(flags=flags, red=red).hex()); s.run(400); s.send('Q'); s.run(900); s.take()
     led_setup(0x10)                       # hold mode, common cathode
     check('hold LED: off when idle (no start-up blinks)', s.green(), 0)
     s.pin(1, 0); s.run(100)
@@ -242,6 +248,19 @@ def suite(elf, mcu, mhz):
     check('common anode: off again after release', s.green(), 1)
     s.reset(); s.run(2100)
     check('common anode: off right after power-up', s.green(), 1)
+    # green dimming: brightness 64 of 255 = 25 %
+    led_setup(0x10, red=64)
+    s.pin(1, 0); s.run(60)
+    d = s.duty(100)
+    check(f'green dimmed to 25 % while held (measured {d:.2f})', 0.20 < d < 0.30, True)
+    s.pin(1, 1); s.run(60)
+    check('dimmed green off after release', s.duty(50), 0.0)
+    led_setup(0x10 | 0x08 | 0x20, red=64)    # common anode + idle glow
+    s.pin(1, 0); s.run(60)
+    d = s.duty(100)
+    check(f'common anode: green pin low 25 % of the time while held (high {d:.2f})', 0.70 < d < 0.80, True)
+    s.pin(1, 1); s.run(60)
+    check('idle glow: green stays off (pin high on common anode)', s.duty(50), 1.0)
     s.take(); s.close()
 
 

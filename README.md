@@ -49,7 +49,8 @@ What a switch can do:
   Firmware is built for 16 MHz (Nano, Pro Mini 5 V) and 8 MHz (Pro Mini 3.3 V).
 
 The LED can flash when a switch sends, light only while a switch is held (green, red once a long press starts)
-or stay off, and works with common cathode and common anode bicolor LEDs.
+or stay off, optionally with a faint red glow when idle. Both colours are dimmable (green with software PWM on
+Timer2), and common cathode and common anode bicolor LEDs both work.
 
 A switch without a long press action reacts as soon as you step on it. With a long press action, the short
 press is sent when you lift your foot. The long press time, MIDI channel, LED feedback and red LED brightness

@@ -117,7 +117,7 @@
 
 #include <EEPROM.h>
 
-#define FW_VERSION 3
+#define FW_VERSION 4
 
 // ---------------------------------------------------------------- pins
 const uint8_t BTN_PINS[4] = {2, 3, 6, 8};
@@ -141,6 +141,7 @@ enum { P_MAGIC0 = 0, P_MAGIC1, P_VERSION, P_PROFILE, P_CHANNEL, P_FLAGS,
 #define FLAG_TWO_SWITCHES 0x04   // original two button MIDI Muppet HX: only switches 1 and 2
 #define FLAG_LED_INVERTED 0x08   // common anode LED: a colour is lit when its pin is LOW
 #define FLAG_LED_HOLD     0x10   // generic profile: LED lit only while a switch is held
+#define FLAG_IDLE_GLOW    0x20   // generic profile: faint red when idle, shows the pedal is on
 
 enum { A_NONE = 0, A_PC, A_CC, A_CC_TOGGLE, A_CC_MOMENTARY, A_PC_NEXT, A_PC_PREV, A_HX_TUNER };
 
@@ -219,22 +220,62 @@ uint8_t flashLed = 0, flashLeft = 0;     // flashLeft counts on+off halves
 unsigned long flashNext = 0;
 #define FLASH_MS 70
 
+// LED levels are 0 (off) to 255 (full). Red (D5) is dimmed with hardware PWM;
+// green (D4) has no PWM pin, so Timer2 switches it in software (about 490 Hz).
 bool ledInverted() { return cfg[P_FLAGS] & FLAG_LED_INVERTED; }
+uint8_t brightness() { return cfg[P_RED] ? cfg[P_RED] : 1; }
+uint8_t curGreen = 255, curRed = 255;   // 255 + 1 = "unknown" at start, see leds()
+bool ledsKnown = false;
 bool greenOn = false;
+volatile uint8_t greenDuty = 0;
 
-void ledRed(bool on) {
+inline void greenPin(bool lit) {
+  if (lit != ledInverted()) PORTD |= _BV(4); else PORTD &= ~_BV(4);   // D4 = PD4
+}
+
+ISR(TIMER2_OVF_vect)  { uint8_t d = greenDuty; if (d && d < 255) greenPin(true); }
+ISR(TIMER2_COMPB_vect) { uint8_t d = greenDuty; if (d && d < 255) greenPin(false); }
+
+void initGreenPwm() {
+  TCCR2A = _BV(WGM21) | _BV(WGM20);   // fast PWM, the OC2 pins stay disconnected
+  TCCR2B = _BV(CS22) | _BV(CS20);     // clock / 128
+  OCR2B = 0;
+  TIMSK2 = _BV(TOIE2) | _BV(OCIE2B);
+}
+
+void applyGreen(uint8_t level) {
+  greenDuty = level;
+  OCR2B = level;
+  if (level == 0) greenPin(false);
+  else if (level == 255) greenPin(true);
+}
+
+void applyRed(uint8_t level) {
   if (!ledInverted()) {
-    if (on) analogWrite(LED_RED, cfg[P_RED]);
-    else digitalWrite(LED_RED, LOW);
-  } else {
-    if (on) analogWrite(LED_RED, 255 - cfg[P_RED]);   // common anode: low = lit
-    else digitalWrite(LED_RED, HIGH);
+    if (level == 0) digitalWrite(LED_RED, LOW);
+    else if (level == 255) digitalWrite(LED_RED, HIGH);
+    else analogWrite(LED_RED, level);
+  } else {                                      // common anode: low = lit
+    if (level == 0) digitalWrite(LED_RED, HIGH);
+    else analogWrite(LED_RED, 255 - level);
   }
 }
 
-void ledGreen(bool on) {
-  greenOn = on;
-  digitalWrite(LED_GRN, (on != ledInverted()) ? HIGH : LOW);
+// Sets both colours, touching the pins only when something changes
+void leds(uint8_t green, uint8_t red) {
+  if (!ledsKnown || green != curGreen) applyGreen(green);
+  if (!ledsKnown || red != curRed) applyRed(red);
+  curGreen = green; curRed = red; ledsKnown = true;
+}
+
+void ledGreen(bool on) { greenOn = on; leds(on ? brightness() : 0, curRed); }
+void ledRed(bool on) { leds(curGreen, on ? brightness() : 0); }
+
+// Faint red when idle, if chosen: 1/16 of the brightness, at least just visible
+uint8_t glowLevel() {
+  if (!(cfg[P_FLAGS] & FLAG_IDLE_GLOW)) return 0;
+  uint8_t g = brightness() / 16;
+  return g ? g : 1;
 }
 
 void flash(uint8_t led, uint8_t times) {
@@ -388,16 +429,20 @@ void genericLong(uint8_t b) {
   if (hasLong(b)) runAction(b * 2 + 1, false);
 }
 
-// LED lit only while a switch is held: green, red once its long press has started
-void holdLeds() {
+// Generic profile, between flashes. With "light while held": green while a switch
+// is held, red once its long press has started. Otherwise off, or a faint red glow.
+void idleLeds() {
   bool down = false, longp = false;
-  for (uint8_t i = 0; i < switches(); i++) {
-    if (!btn[i].down) continue;
-    down = true;
-    if (hasLong(i) && millis() - btn[i].downAt >= longMs()) longp = true;
+  if (cfg[P_FLAGS] & FLAG_LED_HOLD) {
+    for (uint8_t i = 0; i < switches(); i++) {
+      if (!btn[i].down) continue;
+      down = true;
+      if (hasLong(i) && millis() - btn[i].downAt >= longMs()) longp = true;
+    }
   }
-  ledGreen(down && !longp);
-  ledRed(longp);
+  if (longp) leds(0, brightness());
+  else if (down) leds(brightness(), 0);
+  else leds(0, glowLevel());
 }
 
 // ---------------------------------------------------------------- HX Stomp profile
@@ -611,11 +656,12 @@ bool setupCommand(const char *l) {
     if (!configValid(buf)) { Serial.println(F("ERR invalid")); return true; }
     memcpy(cfg, buf, CFG_SIZE);
     saveConfig();
+    ledsKnown = false;              // the LED type may have changed: set the pins again
     Serial.println(F("OK"));
     flashBlocking(LED_GRN, 2, 80);
     return true;
   }
-  if (!strcmp(l, "D")) { defaultConfig(); saveConfig(); Serial.println(F("OK")); return true; }
+  if (!strcmp(l, "D")) { defaultConfig(); saveConfig(); ledsKnown = false; Serial.println(F("OK")); return true; }
   if (l[0] == 'L' && l[1] == ' ') {
     flashBlocking(l[2] == '2' ? LED_RED : LED_GRN, 3, 120);
     Serial.println(F("OK"));
@@ -679,6 +725,7 @@ void setup() {
   ledGreen(false); ledRed(false);     // set the "off" level before the pins become outputs
   pinMode(LED_RED, OUTPUT);
   pinMode(LED_GRN, OUTPUT);
+  initGreenPwm();
   initButtons();
   if (editorPresent()) setupMode();
   startFootSwitch();
@@ -688,5 +735,5 @@ void loop() {
   readButtons();
   if (flashing()) updateFlash();
   else if (cfg[P_PROFILE] == PROFILE_HX) hxLeds();
-  else if (cfg[P_FLAGS] & FLAG_LED_HOLD) holdLeds();
+  else idleLeds();
 }

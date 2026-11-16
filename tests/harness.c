@@ -37,7 +37,11 @@ static int baud_ok(void) { if (!host_baud) return 1; int m = mcu_baud(); return 
 static void tx_cb(struct avr_irq_t *irq, uint32_t value, void *p) {
   if (txlen < (int)sizeof txbuf) txbuf[txlen++] = baud_ok() ? value : (value ^ 0xA5);   // wrong speed: garbage
 }
-static void green_cb(struct avr_irq_t *irq, uint32_t value, void *p) { green = value; }
+static avr_cycle_count_t g_since, g_high;   // time the green pin was high, for "duty"
+static void green_cb(struct avr_irq_t *irq, uint32_t value, void *p) {
+  if (green) g_high += avr->cycle - g_since;
+  g_since = avr->cycle; green = value;
+}
 
 static void flush_tx(void) {
   if (!txlen) return;
@@ -159,6 +163,13 @@ int main(int argc, char **argv) {
     else if (!strncmp(line, "baud ", 5)) host_baud = atoi(line + 5);
     else if (!strcmp(line, "pc")) printf("PC %04X MCUSR %02X state %d\n", avr->pc, avr->data[0x54], avr->state);
     else if (!strcmp(line, "led")) printf("LED g=%d\n", green);
+    else if (!strncmp(line, "duty ", 5)) {        // duty <ms>: fraction of time the green pin is high
+      avr_cycle_count_t start = avr->cycle; g_high = 0; g_since = start;
+      run_ms(atof(line + 5));
+      if (green) g_high += avr->cycle - g_since;
+      g_since = avr->cycle;
+      printf("DUTY %.3f\n", (double)g_high / (double)(avr->cycle - start));
+    }
     else if (!strcmp(line, "quit")) break;
   }
   return 0;
