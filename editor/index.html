@@ -74,8 +74,8 @@ input[type=range]{width:100%;accent-color:var(--accent)}
 .press.disabled{opacity:.55}
 .tag{font-size:.75rem;font-weight:600;color:var(--muted);background:var(--chip);border-radius:999px;padding:2px 9px}
 .toolbar{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
-.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
-@media (max-width:1050px){.grid2{grid-template-columns:1fr}}
+.grid2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px}
+@media (max-width:1050px){.grid2{grid-template-columns:minmax(0,1fr)}}
 .msg{font-size:.9rem;margin-top:8px;min-height:1.3em}
 .msg.ok{color:var(--ok)} .msg.err{color:var(--err)}
 progress{width:100%;height:10px;accent-color:var(--accent)}
@@ -195,7 +195,7 @@ kbd{font:600 .8rem ui-monospace,monospace;background:var(--chip);border:1px soli
         <progress id="flashProgress" value="0" max="100" hidden></progress>
         <div class="msg" id="flashMsg"></div>
         <details id="logBox" hidden><summary>Technical log – send this if something goes wrong</summary>
-          <pre id="log" style="max-height:260px;overflow:auto;font:12px/1.4 ui-monospace,monospace;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px;white-space:pre-wrap"></pre>
+          <pre id="log" style="max-height:260px;overflow:auto;font:12px/1.4 ui-monospace,monospace;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px;white-space:pre-wrap;overflow-wrap:anywhere"></pre>
           <button id="btnCopyLog">Copy log</button></details>
       </div>
     </div>
@@ -824,11 +824,15 @@ async function flash() {
   try {
     // Nano with new bootloader: 115200, old Nano / Pro Mini 328P: 57600, Nano / Pro Mini 168: 19200
     log('install: board ' + $('board').value + ' MHz, port ' + JSON.stringify(port.getInfo ? port.getInfo() : {}));
-    for (const baud of [115200, 57600, 19200]) {
+    // Try the speed that worked last time first (Nano: 115200 new / 57600 old bootloader, ATmega168: 19200)
+    let bauds = [115200, 57600, 19200];
+    try { const last = +localStorage.getItem('mm-boot-baud'); if (bauds.includes(last)) bauds = [last, ...bauds.filter(b => b !== last)]; } catch (e) {}
+    let bootBaud = 0;
+    for (const baud of bauds) {
       log('install: trying the bootloader at ' + baud + ' baud');
       stk = new Stk500(port);
       await stk.open(baud);
-      if (await stk.sync(baud)) break;
+      if (await stk.sync(baud)) { bootBaud = baud; break; }
       await stk.close(); stk = null;
     }
     if (!stk) throw new Error('No bootloader answered. Check the cable and that this is the Arduino\'s port, then try again.');
@@ -862,7 +866,7 @@ async function flash() {
     log('install: all pages checked');
     await stk.cmd([0x51]);                                   // leave programming mode, start the firmware
     done = true;
-    try { localStorage.setItem('mm-mhz', mhz); } catch (e) {}
+    try { localStorage.setItem('mm-mhz', mhz); localStorage.setItem('mm-boot-baud', String(bootBaud)); } catch (e) {}
     msg('flashMsg', `Firmware installed on the ${fw.name} (${mhz} MHz) ✓ Click “Connect pedal” to set it up.`, 'ok');
   } catch (e) {
     log('install failed: ' + e.message);
