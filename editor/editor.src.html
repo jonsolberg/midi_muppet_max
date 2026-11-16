@@ -721,6 +721,10 @@ const FIRMWARE = {
   '1e9406': {name: 'ATmega168', hex: {16: /*HEX_ATMEGA168_16*/'', 8: /*HEX_ATMEGA168_8*/''}},
   '1e950f': {name: 'ATmega328P', hex: {16: /*HEX_ATMEGA328P_16*/'', 8: /*HEX_ATMEGA328P_8*/''}},
 };
+// Same firmware for the A/PA and non-P variants: they run the same code
+FIRMWARE['1e940b'] = {...FIRMWARE['1e9406'], name: 'ATmega168PA'};
+FIRMWARE['1e9514'] = {...FIRMWARE['1e950f'], name: 'ATmega328'};
+
 
 function parseIntelHex(text) {
   const mem = new Uint8Array(32768).fill(0xff); let top = 0, base = 0;
