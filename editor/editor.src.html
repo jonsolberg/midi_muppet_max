@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>MIDI Muppet 4btn editor</title>
-<meta name="description" content="Set up the four button MIDI Muppet foot switch from your browser: actions for every switch, HX Stomp modes, BOSS RC-500 and Wampler Terraform presets.">
+<title>MIDI Muppet editor</title>
+<meta name="description" content="Set up the MIDI Muppet foot switch – the four button version or the original MIDI Muppet HX – from your browser: actions for every switch, HX Stomp modes, BOSS RC-500 and Wampler Terraform presets.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Crect x='6' y='4' width='36' height='40' rx='6' fill='%23161a22'/%3E%3Ccircle cx='17' cy='14' r='4' fill='%23cfd6e0'/%3E%3Ccircle cx='31' cy='14' r='4' fill='%23cfd6e0'/%3E%3Ccircle cx='17' cy='34' r='4' fill='%23cfd6e0'/%3E%3Ccircle cx='31' cy='34' r='4' fill='%23cfd6e0'/%3E%3Ccircle cx='24' cy='24' r='2' fill='%2348d17a'/%3E%3C/svg%3E">
 <style>
 :root{
@@ -62,6 +62,7 @@ svg.pedal{width:100%;max-width:340px;display:block;margin:0 auto}
 .row{display:grid;grid-template-columns:150px 1fr;gap:8px 12px;align-items:center;margin:8px 0}
 @media (max-width:520px){.row{grid-template-columns:1fr}}
 .row label{color:var(--muted);font-size:.9rem}
+.grid2 .row{grid-template-columns:118px minmax(0,1fr)}
 select,input[type=number],input[type=text]{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:9px;padding:7px 9px;width:100%}
 input[type=number]{max-width:110px}
 input[type=range]{width:100%;accent-color:var(--accent)}
@@ -92,8 +93,8 @@ kbd{font:600 .8rem ui-monospace,monospace;background:var(--chip);border:1px soli
 <header class="top">
   <div>
     <a class="home" href="/">← jonsolberg.se</a>
-    <h1>MIDI Muppet 4btn editor</h1>
-    <div class="sub">Set up your four button MIDI foot switch over USB – no Arduino IDE needed.</div>
+    <h1>MIDI Muppet editor</h1>
+    <div class="sub">Set up your MIDI Muppet over USB – the four button version or the original two button MIDI Muppet HX. No Arduino IDE needed.</div>
   </div>
   <div class="conn">
     <span class="status" id="status"><i></i><span id="statusText">Not connected</span></span>
@@ -121,6 +122,11 @@ kbd{font:600 .8rem ui-monospace,monospace;background:var(--chip);border:1px soli
     <div class="grid2">
       <div class="card">
         <h2>Pedal setup</h2>
+        <div class="row"><label for="hardware">Pedal</label>
+          <select id="hardware">
+            <option value="4">4btn – 4 switches</option>
+            <option value="2">Original HX – 2 switches</option>
+          </select></div>
         <div class="row"><label for="profile">Profile</label>
           <select id="profile">
             <option value="0">Generic</option>
@@ -140,6 +146,7 @@ kbd{font:600 .8rem ui-monospace,monospace;background:var(--chip);border:1px soli
         <div class="toolbar">
           <select id="template" style="max-width:340px">
             <option value="">Choose…</option>
+            <option value="original">Original MIDI Muppet HX – 2 switches, as it came</option>
             <option value="hx">HX Stomp – MIDI Muppet HX (up/down, tap, tuner, bypass)</option>
             <option value="hx4">HX Stomp – snapshots and footswitches</option>
             <option value="rc500">BOSS RC-500 – 8 memories</option>
@@ -169,7 +176,12 @@ kbd{font:600 .8rem ui-monospace,monospace;background:var(--chip);border:1px soli
           <input type="file" id="importFile" accept=".json,application/json" hidden>
         </div>
         <h3>Firmware</h3>
-        <p class="hint" style="margin-top:0">The editor needs the MIDI Muppet config firmware on the Arduino. Install it once – it works for Arduino Nano and Pro Mini with ATmega168 or ATmega328P.</p>
+        <p class="hint" style="margin-top:0">The editor needs the MIDI Muppet config firmware on the Arduino. Install it once – it works for Arduino Nano and Pro Mini with ATmega168 or ATmega328P, in the 4btn and in the original MIDI Muppet HX.</p>
+        <div class="row"><label for="board">Arduino</label>
+          <select id="board">
+            <option value="16">Nano / Pro Mini 5 V</option>
+            <option value="8">Pro Mini 3.3 V</option>
+          </select></div>
         <div class="toolbar"><button id="btnFlash">Install firmware</button></div>
         <progress id="flashProgress" value="0" max="100" hidden></progress>
         <div class="msg" id="flashMsg"></div>
@@ -179,7 +191,7 @@ kbd{font:600 .8rem ui-monospace,monospace;background:var(--chip);border:1px soli
     <div class="card">
       <h2>How it works</h2>
       <ol style="margin:0;padding-left:20px">
-        <li>Connect the Arduino in the pedal to the computer with a USB cable.</li>
+        <li>Connect the Arduino in the pedal to the computer with a USB cable (a Pro Mini through its USB–serial adapter, with DTR connected).</li>
         <li>First time: click <b>Install firmware</b> and pick the Arduino's port. Your old sketch is replaced.</li>
         <li>Click <b>Connect pedal</b>. The pedal restarts and blinks green/red while it is in setup mode.</li>
         <li>Click a switch in the picture, choose what a short and a long press should do, then <b>Save to pedal</b>.</li>
@@ -187,13 +199,13 @@ kbd{font:600 .8rem ui-monospace,monospace;background:var(--chip);border:1px soli
       </ol>
       <details><summary>Details for the curious</summary>
         <p class="hint">After power-up the firmware listens on USB for 1.5 seconds before it starts as a foot switch, so it doesn't send anything to your other pedals while it listens. A switch without a long press action reacts as soon as you step on it; with a long press action, the short press is sent when you lift your foot. In the HX Stomp profile, switches 1 and 2 work exactly like the original MIDI Muppet HX: scroll, footswitch, snapshot, looper and tuner modes, and holding both switches changes mode.</p>
-        <p class="hint">Wiring: switches on D2, D3, D6, D8 to ground; bicolor LED green on D4, red on D5; MIDI out on TX. See the <a href="https://github.com/jonsolberg/midi_muppet_multi_4btn">project on GitHub</a>.</p>
+        <p class="hint">Wiring: switches on D2, D3, D6, D8 to ground (the original MIDI Muppet HX uses only D2 = UP and D3 = DN); bicolor LED green on D4, red on D5; MIDI out on TX. See the <a href="https://github.com/jonsolberg/midi_muppet_multi_4btn">project on GitHub</a>.</p>
       </details>
     </div>
   </section>
 </main>
 <footer>
-  MIDI Muppet 4btn by Jon Solberg, based on <a href="https://github.com/mattzzw/midi_muppet_hx_2btn">MIDI Muppet HX</a> by Matthias Wientapper.
+  MIDI Muppet editor and 4btn by Jon Solberg, based on <a href="https://github.com/mattzzw/midi_muppet_hx_2btn">MIDI Muppet HX</a> by Matthias Wientapper.
   Free software under GPL v3 · <a href="https://github.com/jonsolberg/midi_muppet_multi_4btn">Source on GitHub</a>
 </footer>
 
@@ -207,15 +219,18 @@ kbd{font:600 .8rem ui-monospace,monospace;background:var(--chip);border:1px soli
 // ------------------------------------------------------------ config format (matches the firmware)
 const CFG_SIZE = 53, CFG_VERSION = 1;
 const T = {NONE:0, PC:1, CC:2, TOGGLE:3, MOMENTARY:4, NEXT:5, PREV:6, HXTUNER:7};
-const FLAG_LED = 1, FLAG_LOOPER = 2;
+const FLAG_LED = 1, FLAG_LOOPER = 2, FLAG_TWO = 4;
 const POS_NAMES = ['Top left', 'Top right', 'Bottom left', 'Bottom right'];
+const POS_NAMES_2 = ['Left', 'Right'];
+const posName = (c, b) => (c.twoSwitches ? POS_NAMES_2 : POS_NAMES)[c.pos[b]];
+const nSwitches = () => state.cfg.twoSwitches ? 2 : 4;
 const PINS = ['D2', 'D3', 'D6', 'D8'];
 
 const act = (type, ch = 0, a = 0, b = 0, c = 0) => ({type, ch, a, b, c});
 
 function defaultConfig() {
   const progs = [[1, 5], [0, 4], [3, 7], [2, 6]];
-  return {profile: 0, channel: 0, ledFeedback: true, looper: true, red: 64, longMs: 800, pos: [0, 1, 2, 3],
+  return {profile: 0, channel: 0, ledFeedback: true, looper: true, twoSwitches: false, red: 64, longMs: 800, pos: [0, 1, 2, 3],
           actions: progs.flatMap(([s, l]) => [act(T.PC, 0, s), act(T.PC, 0, l)])};
 }
 
@@ -223,7 +238,7 @@ function encode(c) {
   const b = new Uint8Array(CFG_SIZE);
   b[0] = 77; b[1] = 52; b[2] = CFG_VERSION;
   b[3] = c.profile; b[4] = c.channel;
-  b[5] = (c.ledFeedback ? FLAG_LED : 0) | (c.looper ? FLAG_LOOPER : 0);
+  b[5] = (c.ledFeedback ? FLAG_LED : 0) | (c.looper ? FLAG_LOOPER : 0) | (c.twoSwitches ? FLAG_TWO : 0);
   b[6] = c.red; b[7] = Math.round(c.longMs / 10);
   c.pos.forEach((p, i) => b[8 + i] = p);
   c.actions.forEach((x, i) => b.set([x.type, x.ch, x.a, x.b, x.c], 12 + i * 5));
@@ -237,7 +252,7 @@ function decode(b) {
   if (b[2] !== CFG_VERSION) throw new Error('setup version ' + b[2] + ' is not supported');
   const actions = [];
   for (let i = 0; i < 8; i++) { const o = 12 + i * 5; actions.push(act(b[o], b[o + 1], b[o + 2], b[o + 3], b[o + 4])); }
-  return {profile: b[3], channel: b[4], ledFeedback: !!(b[5] & FLAG_LED), looper: !!(b[5] & FLAG_LOOPER),
+  return {profile: b[3], channel: b[4], ledFeedback: !!(b[5] & FLAG_LED), looper: !!(b[5] & FLAG_LOOPER), twoSwitches: !!(b[5] & FLAG_TWO),
           red: b[6], longMs: b[7] * 10, pos: [b[8], b[9], b[10], b[11]], actions};
 }
 
@@ -317,6 +332,8 @@ function describe(x, slot) {
 
 // ------------------------------------------------------------ templates
 const TEMPLATES = {
+  original: () => ({...defaultConfig(), profile: 1, twoSwitches: true, pos: [1, 0, 2, 3], red: 25, actions: [act(0), act(0), act(0), act(0),
+      act(T.CC, 0, 64, 127), act(T.HXTUNER), act(T.TOGGLE, 0, 6, 127, 0), act(T.TOGGLE, 0, 70, 0, 127)], hint: 'hx'}),
   hx: () => ({...defaultConfig(), profile: 1, actions: [act(0), act(0), act(0), act(0),
       act(T.CC, 0, 64, 127), act(T.HXTUNER), act(T.TOGGLE, 0, 6, 127, 0), act(T.TOGGLE, 0, 70, 0, 127)], hint: 'hx'}),
   hx4: () => ({...defaultConfig(), profile: 0, actions: [act(T.CC, 0, 69, 9), act(T.HXTUNER), act(T.CC, 0, 69, 8), act(T.CC, 0, 64, 127),
@@ -338,16 +355,19 @@ function setDirty(d) { state.dirty = d; $('dirty').hidden = !d || !pedal.connect
 function changed() { setDirty(true); renderPedal(); }
 
 const SWITCH_XY = [[84, 84], [216, 84], [84, 316], [216, 316]];
+const SWITCH_XY_2 = [[78, 190], [222, 190]];
 
 function renderPedal() {
   const c = state.cfg;
   let s = `<defs><linearGradient id="enc" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2a2f39"/><stop offset="1" stop-color="#14171d"/></linearGradient>
     <radialGradient id="cap" cx=".35" cy=".3" r=".8"><stop offset="0" stop-color="#ffffff"/><stop offset=".5" stop-color="#c7ced8"/><stop offset="1" stop-color="#7d8794"/></radialGradient></defs>
-    <rect x="10" y="10" width="280" height="430" rx="26" fill="url(#enc)" stroke="#0b0d11" stroke-width="2"/>`;
-  // LED
-  s += `<circle cx="150" cy="215" r="11" fill="#9aa3ad"/><circle cx="150" cy="215" r="6.5" fill="${pedal.connected ? '#48d17a' : '#e7ecef'}" id="ledDot"/>`;
-  for (let b = 0; b < 4; b++) {
-    const [x, y] = SWITCH_XY[c.pos[b]];
+    ${c.twoSwitches ? '<rect x="10" y="110" width="280" height="170" rx="22" fill="url(#enc)" stroke="#0b0d11" stroke-width="2"/>'
+                    : '<rect x="10" y="10" width="280" height="430" rx="26" fill="url(#enc)" stroke="#0b0d11" stroke-width="2"/>'}`;
+  const ledY = c.twoSwitches ? 190 : 215;
+  s += `<circle cx="150" cy="${ledY}" r="11" fill="#9aa3ad"/><circle cx="150" cy="${ledY}" r="6.5" fill="${pedal.connected ? '#48d17a' : '#e7ecef'}" id="ledDot"/>`;
+  $('pedal').setAttribute('viewBox', c.twoSwitches ? '0 100 300 190' : '0 0 300 450');
+  for (let b = 0; b < nSwitches(); b++) {
+    const [x, y] = (c.twoSwitches ? SWITCH_XY_2 : SWITCH_XY)[c.pos[b] % (c.twoSwitches ? 2 : 4)];
     const hx = c.profile === 1 && b < 2;
     const l1 = hx ? (b === 0 ? 'UP' : 'DN') + ' · HX modes' : short(describe(c.actions[b * 2], b * 2));
     const l2 = hx ? '' : (c.actions[b * 2].type === T.MOMENTARY ? 'held' : 'long: ' + short(describe(c.actions[b * 2 + 1], b * 2 + 1)));
@@ -367,11 +387,11 @@ function renderPedal() {
     g.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); select(+g.dataset.b); } };
   });
   // legend
-  $('legend').innerHTML = [0, 1, 2, 3].map(b => {
+  $('legend').innerHTML = [0, 1, 2, 3].slice(0, nSwitches()).map(b => {
     const hx = c.profile === 1 && b < 2;
     const t = hx ? (b === 0 ? 'UP – HX Stomp modes' : 'DN – HX Stomp modes') :
       describe(c.actions[b * 2], b * 2) + (c.actions[b * 2].type === T.MOMENTARY ? '' : ' · long: ' + describe(c.actions[b * 2 + 1], b * 2 + 1));
-    return `<li data-b="${b}" class="${state.sel === b ? 'sel' : ''}${state.live.has(b) ? ' live' : ''}"><b class="n">${b + 1}</b><span>${esc(t)}<small>${POS_NAMES[c.pos[b]]} · pin ${PINS[b]}</small></span></li>`;
+    return `<li data-b="${b}" class="${state.sel === b ? 'sel' : ''}${state.live.has(b) ? ' live' : ''}"><b class="n">${b + 1}</b><span>${esc(t)}<small>${posName(c, b)} · pin ${PINS[b]}</small></span></li>`;
   }).join('');
   $('legend').querySelectorAll('li').forEach(li => li.onclick = () => select(+li.dataset.b));
 }
@@ -380,13 +400,14 @@ const hexPts = (x, y, r) => Array.from({length: 6}, (_, i) => { const a = Math.P
 const short = t => t.length > 19 ? t.slice(0, 18) + '…' : t;
 const esc = t => String(t).replace(/[&<>"]/g, m => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[m]));
 
-function select(b) { state.sel = b; renderPedal(); renderButton(); }
+function select(b) { if (b >= nSwitches()) return; state.sel = b; renderPedal(); renderButton(); }
 
 function renderButton() {
   const b = state.sel, c = state.cfg;
   $('btnTitle').textContent = `Switch ${b + 1}`;
   const body = $('btnBody');
-  let h = `<div class="row"><label for="pos">Place on the pedal</label><select id="pos">${POS_NAMES.map((n, i) => `<option value="${i}"${c.pos[b] === i ? ' selected' : ''}>${n}</option>`).join('')}</select></div>`;
+  const names = c.twoSwitches ? POS_NAMES_2 : POS_NAMES;
+  let h = `<div class="row"><label for="pos">Place on the pedal</label><select id="pos">${names.map((n, i) => `<option value="${i}"${c.pos[b] === i ? ' selected' : ''}>${n}</option>`).join('')}</select></div>`;
   if (c.profile === 1 && b < 2) {
     h += `<div class="hxinfo"><b>${b === 0 ? 'UP' : 'DN'}</b> works like the original MIDI Muppet HX in the HX Stomp profile:
       <table>
@@ -396,6 +417,7 @@ function renderButton() {
       <tr><td>Looper mode</td><td>${b === 0 ? 'play / stop · long press: undo/redo' : 'record / overdub (on press)'}</td></tr>
       <tr><td>Tuner</td><td>any switch closes it</td></tr>
       <tr><td>Hold UP + DN</td><td>scroll → footswitch → looper → scroll</td></tr>
+      <tr><td>Power-up config</td><td>MIDI channel and looper on/off are set here in the editor instead of by holding a switch at power-up</td></tr>
       </table>
       <p class="hint">LED: red = scroll, green = footswitch/snapshot, blinking green = tuner, looper: green play, red record, yellow overdub.</p></div>`;
     body.innerHTML = h;
@@ -408,7 +430,7 @@ function renderButton() {
     for (const slot of [b * 2, b * 2 + 1]) wirePress(slot);
   }
   $('pos').onchange = e => {
-    const p = +e.target.value, other = c.pos.indexOf(p);
+    const p = +e.target.value, other = c.pos.slice(0, nSwitches()).indexOf(p);
     if (other >= 0) c.pos[other] = c.pos[b];
     c.pos[b] = p; changed(); renderButton();
   };
@@ -448,16 +470,28 @@ function wirePress(slot) {
 
 function renderSettings() {
   const c = state.cfg;
+  $('hardware').value = c.twoSwitches ? '2' : '4';
   $('profile').value = c.profile;
   $('channel').innerHTML = Array.from({length: 16}, (_, i) => `<option value="${i}"${c.channel === i ? ' selected' : ''}>${i + 1}</option>`).join('');
   $('longMs').value = c.longMs; $('longMsVal').textContent = (c.longMs / 1000).toFixed(2).replace(/0$/, '') + ' s';
   $('ledFeedback').checked = c.ledFeedback; $('red').value = c.red; $('looper').checked = c.looper;
   $('looperRow').style.display = c.profile === 1 ? '' : 'none';
-  $('profileHint').textContent = c.profile === 1 ? 'Switches 1 and 2 are UP and DN of the original MIDI Muppet HX; 3 and 4 have their own actions.' : 'Every switch has its own short and long press actions.';
+  $('profileHint').textContent = c.profile === 1
+    ? (c.twoSwitches ? 'Switch 1 is UP and switch 2 is DN, exactly like the original MIDI Muppet HX.' : 'Switches 1 and 2 are UP and DN of the original MIDI Muppet HX; 3 and 4 have their own actions.')
+    : 'Every switch has its own short and long press actions.';
 }
 
 function renderAll() { renderSettings(); renderPedal(); renderButton(); }
 
+$('hardware').onchange = e => {
+  const c = state.cfg, two = e.target.value === '2';
+  if (two === c.twoSwitches) return;
+  c.twoSwitches = two;
+  if (two) c.pos = [1, 0, 2, 3];   // UP on the right, DN on the left, like the original
+  else c.pos = [0, 1, 2, 3];
+  if (state.sel >= nSwitches()) state.sel = 0;
+  changed(); renderAll();
+};
 $('profile').onchange = e => { state.cfg.profile = +e.target.value; if (state.cfg.profile === 1) state.pedalHint = 'hx'; changed(); renderAll(); };
 $('channel').onchange = e => { state.cfg.channel = +e.target.value; changed(); };
 $('longMs').oninput = e => { state.cfg.longMs = +e.target.value; renderSettings(); changed(); renderButton(); };
@@ -467,7 +501,9 @@ $('looper').onchange = e => { state.cfg.looper = e.target.checked; changed(); };
 $('btnTemplate').onclick = () => {
   const t = $('template').value; if (!t) return;
   const n = TEMPLATES[t](); state.pedalHint = n.hint || null; delete n.hint;
-  n.channel = state.cfg.channel; n.pos = state.cfg.pos.slice();
+  n.channel = state.cfg.channel;
+  if (t !== 'original') { n.pos = state.cfg.pos.slice(); n.twoSwitches = state.cfg.twoSwitches; }
+  if (state.sel >= (n.twoSwitches ? 2 : 4)) state.sel = 0;
   state.cfg = n; changed(); renderAll();
 };
 
@@ -571,17 +607,25 @@ async function connect() {
   try { port = await choosePort(); } catch (e) { return; }   // user cancelled
   $('btnConnect').disabled = true; status('Connecting…', 'busy'); msg('pedalMsg', '');
   try {
-    await pedal.open(port, 115200);
-    await resetBoard(port);
-    // Say hello until the firmware answers (it listens 1.5 s after the restart)
-    const hello = pedal.waitFor(l => l.startsWith('MM4 '), 6000);
-    let answered = false;
-    hello.then(() => answered = true, () => {});
-    (async () => { for (let i = 0; i < 50 && !answered && pedal.writer; i++) { try { await pedal.send('MM?'); } catch (e) { break; } await sleep(110); } })();
-    const line = await hello;
-    const [, fw, mcu, size] = line.split(' ');
+    // 16 MHz boards answer at 115200 baud, 8 MHz Pro Minis at 57600: try the likely one first
+    let mhzPref = '16'; try { mhzPref = localStorage.getItem('mm-mhz') || $('board').value; } catch (e) {}
+    const speeds = mhzPref === '8' ? [57600, 115200] : [115200, 57600];
+    let line = null;
+    for (const baud of speeds) {
+      await pedal.open(port, baud);
+      await resetBoard(port);
+      // Say hello until the firmware answers (it listens 1.5 s after the restart)
+      const hello = pedal.waitFor(l => l.startsWith('MM4 '), 4000);
+      let answered = false;
+      hello.then(() => answered = true, () => {});
+      (async () => { for (let i = 0; i < 36 && !answered && pedal.writer; i++) { try { await pedal.send('MM?'); } catch (e) { break; } await sleep(110); } })();
+      try { line = await hello; break; } catch (e) { await pedal.close(); pedal.port = port; }
+    }
+    if (!line) throw new Error('timeout');
+    const [, fw, mcu, size, mhz] = line.split(' ');
     if (+size !== CFG_SIZE) throw new Error('This pedal has a different firmware version – install the firmware again.');
-    pedal.info = {fw: +fw, mcu};
+    pedal.info = {fw: +fw, mcu, mhz: +(mhz || 16)};
+    try { localStorage.setItem('mm-mhz', String(pedal.info.mhz)); } catch (e) {}
     pedal.connected = true;
     const c = await pedal.request('R', l => l.startsWith('C '));
     const fromPedal = decode(unhex(c.slice(2)));
@@ -589,7 +633,7 @@ async function connect() {
       setDirty(true);
     } else { state.cfg = fromPedal; setDirty(false); }
     status('Connected', 'on');
-    $('pedalInfo').innerHTML = `MIDI Muppet config firmware ${pedal.info.fw} · ${pedal.info.mcu === '168' ? 'ATmega168' : 'ATmega328P'}. The LED blinks green/red while the pedal is in setup mode.`;
+    $('pedalInfo').innerHTML = `MIDI Muppet config firmware ${pedal.info.fw} · ${pedal.info.mcu === '168' ? 'ATmega168' : 'ATmega328P'} · ${pedal.info.mhz} MHz. The LED blinks green/red while the pedal is in setup mode.`;
     renderAll(); updateButtons();
   } catch (e) {
     await pedal.close(); pedal.port = null;
@@ -616,6 +660,7 @@ function lost() {
 }
 
 function buttonEvent(b, down) {
+  if (b >= nSwitches()) return;
   if (down) { state.live.add(b); if (state.sel !== b) { state.sel = b; renderButton(); } }
   else state.live.delete(b);
   renderPedal();
@@ -658,8 +703,8 @@ $('btnLed').onclick = async () => { try { await pedal.request('L 1', l => l === 
 
 // ------------------------------------------------------------ firmware install (STK500v1, Arduino bootloaders)
 const FIRMWARE = {
-  '1e9406': {name: 'ATmega168', hex: /*HEX_ATMEGA168*/''},
-  '1e950f': {name: 'ATmega328P', hex: /*HEX_ATMEGA328P*/''},
+  '1e9406': {name: 'ATmega168', hex: {16: /*HEX_ATMEGA168_16*/'', 8: /*HEX_ATMEGA168_8*/''}},
+  '1e950f': {name: 'ATmega328P', hex: {16: /*HEX_ATMEGA328P_16*/'', 8: /*HEX_ATMEGA328P_8*/''}},
 };
 
 function parseIntelHex(text) {
@@ -746,8 +791,9 @@ async function flash() {
     const sig = hex(await stk.cmd([0x75], 3)).toLowerCase();
     const fw = FIRMWARE[sig];
     if (!fw) throw new Error('This chip (signature ' + sig + ') is not an ATmega168 or ATmega328P.');
-    const image = parseIntelHex(fw.hex);
-    msg('flashMsg', `Installing on ${fw.name}…`);
+    const mhz = $('board').value;
+    const image = parseIntelHex(fw.hex[mhz]);
+    msg('flashMsg', `Installing on ${fw.name} (${mhz} MHz)…`);
     await stk.cmd([0x50]);                                   // enter programming mode
     const PAGE = 128, pages = Math.ceil(image.length / PAGE);
     for (let p = 0; p < pages; p++) {
@@ -768,7 +814,8 @@ async function flash() {
     }
     await stk.cmd([0x51]);                                   // leave programming mode, start the firmware
     done = true;
-    msg('flashMsg', `Firmware installed on the ${fw.name} ✓ Click “Connect pedal” to set it up.`, 'ok');
+    try { localStorage.setItem('mm-mhz', mhz); } catch (e) {}
+    msg('flashMsg', `Firmware installed on the ${fw.name} (${mhz} MHz) ✓ Click “Connect pedal” to set it up.`, 'ok');
   } catch (e) {
     msg('flashMsg', e.message.startsWith('timeout') || e.message.startsWith('bootloader') ? 'Installing failed (' + e.message + '). Unplug the USB cable, plug it in again and retry.' : e.message, 'err');
   }
@@ -781,6 +828,7 @@ async function flash() {
 $('btnFlash').onclick = flash;
 
 // ------------------------------------------------------------ start
+try { const m = localStorage.getItem('mm-mhz'); if (m) $('board').value = m; } catch (e) {}
 if (!('serial' in navigator)) { $('noSerial').classList.add('show'); $('btnConnect').disabled = true; }
 else navigator.serial.addEventListener?.('disconnect', e => { if (e.target === pedal.port && pedal.connected) { pedal.close(); lost(); } });
 window.addEventListener('beforeunload', e => { if (state.dirty && pedal.connected) { e.preventDefault(); e.returnValue = ''; } });

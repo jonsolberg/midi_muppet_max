@@ -4,15 +4,17 @@
 import json, os, subprocess, shutil
 R = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 B = os.path.join(R, 'build'); os.makedirs(B, exist_ok=True)
-for mcu in ('atmega168', 'atmega328p'):
+VARIANTS = [(mcu, mhz) for mcu in ('atmega168', 'atmega328p') for mhz in (16, 8)]
+for mcu, mhz in VARIANTS:
+    name = f'mm4config-{mcu}-{mhz}mhz'
     subprocess.run(['bash', os.path.join(R, 'tools', 'build.sh'), f'{R}/midi_muppet_4btn_config/midi_muppet_4btn_config.ino', mcu,
-                    os.path.join(B, f'mm4config-{mcu}')], check=True, capture_output=True)
-    shutil.copy(os.path.join(B, f'mm4config-{mcu}.hex'), f'{R}/firmware/midi_muppet_4btn_config-{mcu}.hex')
+                    os.path.join(B, name)], check=True, capture_output=True, env={**os.environ, 'FCPU': f'{mhz}000000L'})
+    shutil.copy(os.path.join(B, name + '.hex'), f'{R}/firmware/midi_muppet_4btn_config-{mcu}-{mhz}mhz.hex')
 t = open(f'{R}/editor/editor.src.html', encoding='utf-8').read()
-for mcu, tag in (('atmega168', 'HEX_ATMEGA168'), ('atmega328p', 'HEX_ATMEGA328P')):
-    h = open(f'{R}/firmware/midi_muppet_4btn_config-{mcu}.hex').read()
-    ph = f"/*{tag}*/''"
-    assert t.count(ph) == 1
+for mcu, mhz in VARIANTS:
+    h = open(f'{R}/firmware/midi_muppet_4btn_config-{mcu}-{mhz}mhz.hex').read()
+    ph = f"/*HEX_{mcu.upper()}_{mhz}*/''"
+    assert t.count(ph) == 1, ph
     t = t.replace(ph, json.dumps(h))
 open(f'{R}/editor/index.html', 'w', encoding='utf-8').write(t)
 print('editor/index.html', len(t), 'bytes')

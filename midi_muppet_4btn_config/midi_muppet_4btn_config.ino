@@ -63,8 +63,11 @@
   - Buttons 1-4      D2, D3, D6, D8 (to ground, internal pull-ups)
   - LED green / red  D4, D5 (bicolor LED, common cathode, red dimmable)
   - MIDI out         TX (D1)
-  - Board: Arduino Nano or Pro Mini, ATmega168 or ATmega328P
+  - Board: Arduino Nano or Pro Mini, ATmega168 or ATmega328P,
+    16 MHz (5 V) or 8 MHz (3.3 V Pro Mini) - build with the matching board setting
   - No extra libraries needed.
+  - Also runs on the original two button MIDI Muppet HX (switches on D2 = UP
+    and D3 = DN, same LED pins); choose "Original MIDI Muppet HX" in the editor.
 
   How it is set up
   ----------------
@@ -72,14 +75,15 @@
   https://jonsolberg.se:8080/MidiMuppet/
 
   When the editor opens the USB port, the Arduino restarts. For the first
-  1.5 seconds after power-up the firmware listens on USB at 115200 baud.
+  1.5 seconds after power-up the firmware listens on USB at 115200 baud
+  (57600 on 8 MHz boards).
   If the editor says hello it stays in setup mode (LED blinks green/red);
   otherwise it switches the serial port to MIDI speed and works as a
   foot switch. Nothing is sent to the MIDI socket while it listens.
 
   Setup protocol (text lines, newline terminated)
   -----------------------------------------------
-  MM?          -> MM4 <firmware version> <168|328> <config size>
+  MM?          -> MM4 <firmware version> <168|328> <config size> <MHz>
   R            -> C <config as hex>
   W <hex>      -> OK | ERR <reason>   (saves to EEPROM)
   D            -> OK                  (back to defaults)
@@ -112,7 +116,7 @@
 
 #include <EEPROM.h>
 
-#define FW_VERSION 1
+#define FW_VERSION 2
 
 // ---------------------------------------------------------------- pins
 const uint8_t BTN_PINS[4] = {2, 3, 6, 8};
@@ -133,6 +137,7 @@ enum { P_MAGIC0 = 0, P_MAGIC1, P_VERSION, P_PROFILE, P_CHANNEL, P_FLAGS,
 
 #define FLAG_LED_FEEDBACK 0x01
 #define FLAG_HX_LOOPER    0x02
+#define FLAG_TWO_SWITCHES 0x04   // original two button MIDI Muppet HX: only switches 1 and 2
 
 enum { A_NONE = 0, A_PC, A_CC, A_CC_TOGGLE, A_CC_MOMENTARY, A_PC_NEXT, A_PC_PREV, A_HX_TUNER };
 
@@ -266,6 +271,8 @@ void (*onDown)(uint8_t b);
 void (*onUp)(uint8_t b);
 void (*onLong)(uint8_t b);
 
+uint8_t switches() { return (cfg[P_FLAGS] & FLAG_TWO_SWITCHES) ? 2 : 4; }
+
 void initButtons() {
   for (uint8_t i = 0; i < 4; i++) {
     pinMode(BTN_PINS[i], INPUT_PULLUP);
@@ -277,7 +284,7 @@ void initButtons() {
 
 void readButtons() {
   unsigned long now = millis();
-  for (uint8_t i = 0; i < 4; i++) {
+  for (uint8_t i = 0; i < switches(); i++) {
     Button &b = btn[i];
     bool raw = digitalRead(BTN_PINS[i]) == LOW;
     if (raw != b.raw) { b.raw = raw; b.changed = now; }
@@ -508,7 +515,11 @@ void hxLeds() {
 }
 
 // ---------------------------------------------------------------- setup mode (USB)
+#if F_CPU == 8000000L
+#define SETUP_BAUD    57600     // 115200 is too far off at 8 MHz
+#else
 #define SETUP_BAUD    115200
+#endif
 #define MIDI_BAUD     31250
 #define LISTEN_MS     1500
 
@@ -548,7 +559,9 @@ void sayHello() {
 #else
   Serial.print(F(" 328 "));
 #endif
-  Serial.println(CFG_SIZE);
+  Serial.print(CFG_SIZE);
+  Serial.print(' ');
+  Serial.println(F_CPU / 1000000L);
 }
 
 // Handles one setup command. Returns false when setup mode should end.

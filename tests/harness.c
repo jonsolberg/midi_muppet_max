@@ -26,11 +26,12 @@ static int green;
 static avr_cycle_count_t next_feed;
 
 static int host_baud = 115200;
+static uint32_t freq = 16000000;   // CPU clock, SIM_MHZ=8 for 3.3 V Pro Minis
 // Baud the chip's UART is set to (UBRR0, U2X0); 0 if not set up
 static int mcu_baud(void) {
   int ubrr = avr->data[0xC4] | (avr->data[0xC5] << 8);
   int div = (avr->data[0xC0] & 2) ? 8 : 16;
-  return 16000000 / (div * (ubrr + 1));
+  return freq / (div * (ubrr + 1));
 }
 static int baud_ok(void) { if (!host_baud) return 1; int m = mcu_baud(); return m && abs(m - host_baud) * 100 < host_baud * 4; }
 static void tx_cb(struct avr_irq_t *irq, uint32_t value, void *p) {
@@ -48,15 +49,15 @@ static void flush_tx(void) {
 static int btn_state[4] = {1, 1, 1, 1};
 static void set_btn(int b, int v);
 static void run_ms(double ms) {
-  avr_cycle_count_t end = avr->cycle + (avr_cycle_count_t)(ms * 16000.0);
+  avr_cycle_count_t end = avr->cycle + (avr_cycle_count_t)(ms * freq / 1000.0);
   while (avr->cycle < end) {
     if (inhead != intail && avr->cycle >= next_feed) {
       uint8_t b = inq[inhead]; inhead = (inhead + 1) % sizeof inq;
       avr_raise_irq(uart_in, baud_ok() ? b : (b ^ 0x5A));     // wrong speed: garbage
-      next_feed = avr->cycle + 16000000ULL * 10 / (host_baud ? host_baud : 115200);  // 10 bits per byte at the host's speed
+      next_feed = avr->cycle + (uint64_t)freq * 10 / (host_baud ? host_baud : 115200);  // 10 bits per byte at the host's speed
     }
     static avr_cycle_count_t next_btn;
-    if (avr->cycle >= next_btn) { next_btn = avr->cycle + 16000; for (int i = 0; i < 4; i++) set_btn(i, btn_state[i]); }
+    if (avr->cycle >= next_btn) { next_btn = avr->cycle + freq / 1000; for (int i = 0; i < 4; i++) set_btn(i, btn_state[i]); }
     int st = avr_run(avr);
     if (st == cpu_Done || st == cpu_Crashed) { printf("CRASH %d\n", st); break; }
   }
@@ -88,7 +89,7 @@ static const char *mcu_name;
 static void boot(const uint8_t *ee, int eesize) {
   avr = avr_make_mcu_by_name(mcu_name);
   avr_init(avr);
-  avr->frequency = 16000000;
+  avr->frequency = freq;
   avr->log = 0;
   avr_load_firmware(avr, &fw);
   if (saved_flash) memcpy(avr->flash, saved_flash, saved_flash_len);       // keep what was programmed
@@ -118,6 +119,7 @@ int main(int argc, char **argv) {
   setvbuf(stdout, NULL, _IONBF, 0);
   if (argc < 3 || elf_read_firmware(argv[1], &fw)) { fprintf(stderr, "usage: harness fw.elf mcu\n"); return 1; }
   mcu_name = argv[2];
+  if (getenv("SIM_MHZ")) freq = atoi(getenv("SIM_MHZ")) * 1000000;
   if (argc > 3) boot_hex = argv[3];
   boot(NULL, 0);
 

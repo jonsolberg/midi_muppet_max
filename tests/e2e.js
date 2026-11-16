@@ -8,7 +8,8 @@ const log = s => LOG && LOG.write(((Date.now() - T0) / 1000).toFixed(3) + ' ' + 
 const fs = require('fs');
 const puppeteer = require('puppeteer-core');
 
-const [,, appElf, mcu, bootHex, tag] = process.argv;
+const [,, appElf, mcu, bootHex, tag, mhzArg] = process.argv;
+const MHZ = mhzArg || '16';
 const path = require('path');
 const ROOT = path.join(__dirname, '..');
 const EDITOR = 'file://' + path.join(ROOT, 'editor', 'index.html');
@@ -102,10 +103,11 @@ async function waitText(sel, re, ms) {
 
   // 1. install the firmware through the bootloader
   if (bootHex) {
+    await page.select('#board', MHZ);
     await page.click('#btnFlash');
     const m = await waitText('#flashMsg', /✓|failed|No bootloader|not an/, 240000);
     check('firmware installed through the bootloader: ' + m, /✓/.test(m), m);
-    const hexText = fs.readFileSync(path.join(ROOT, 'firmware', `midi_muppet_4btn_config-${mcu}.hex`), 'utf8');
+    const hexText = fs.readFileSync(path.join(ROOT, 'firmware', `midi_muppet_4btn_config-${mcu}-${MHZ}mhz.hex`), 'utf8');
     const img = Buffer.alloc(32768, 0xff); let top = 0;
     for (const l of hexText.split('\n')) if (l.startsWith(':') && l.slice(7, 9) === '00') {
       const b = Buffer.from(l.slice(1).trim(), 'hex'); const a = b.readUInt16BE(1); b.copy(img, a, 4, 4 + b[0]); top = Math.max(top, a + b[0]); }
@@ -118,7 +120,7 @@ async function waitText(sel, re, ms) {
   const st = await waitText('#statusText', /^Connected|Not connected/, 20000);
   check('connects to the pedal', st === 'Connected', st + ' / ' + await text('#pedalMsg'));
   const info = await text('#pedalInfo');
-  check('shows firmware and chip: ' + info, info.includes(mcu === 'atmega168' ? 'ATmega168' : 'ATmega328'));
+  check('shows firmware, chip and clock: ' + info, info.includes(mcu === 'atmega168' ? 'ATmega168' : 'ATmega328P') && info.includes(MHZ + ' MHz'));
   const legend = await page.$$eval('#legend li', l => l.map(x => x.textContent));
   check('default setup read from the pedal', /PC 1 · long: PC 5/.test(legend[0]), legend[0]);
   await page.screenshot({path: `${SHOTS}/${tag}-2-connected.png`, fullPage: true});
@@ -174,6 +176,21 @@ async function waitText(sel, re, ms) {
   // 7. export / import round trip
   const exported = await page.evaluate(() => JSON.stringify({format: 'midi-muppet-4btn', setup: Array.from(__mm.encode(__mm.state.cfg), b => b.toString(16).padStart(2, '0')).join('')}));
   check('export format is plain JSON', JSON.parse(exported).setup.length === 106);
+
+  // 7b. original two button MIDI Muppet HX
+  await page.select('#template', 'original'); await page.click('#btnTemplate');
+  check('original template: pedal is the 2 switch MIDI Muppet HX', (await page.$eval('#hardware', e => e.value)) === '2');
+  check('original template: picture and list show 2 switches',
+    (await page.$$eval('#pedal .sw', l => l.length)) === 2 && (await page.$$eval('#legend li', l => l.length)) === 2);
+  const lr = await page.$$eval('#legend li small', l => l.map(x => x.textContent));
+  check('original template: UP on the right, DN on the left', /^Right/.test(lr[0]) && /^Left/.test(lr[1]), lr.join(' | '));
+  await page.screenshot({path: `${SHOTS}/${tag}-6-original.png`, fullPage: true});
+  await page.click('#btnSave');
+  check('original setup saved', /✓/.test(await waitText('#pedalMsg', /✓|failed/, 15000)));
+  const ee2 = await simQuery('eeprom 53', 'EE ');
+  check('pedal stores two-switch flag and HX profile', (parseInt(ee2.slice(10, 12), 16) & 4) === 4 && ee2.slice(6, 8) === '01', ee2);
+  await page.select('#hardware', '4');
+  check('back to 4 switches shows 4 switches', (await page.$$eval('#pedal .sw', l => l.length)) === 4);
 
   // 8. mobile layout
   await page.setViewport({width: 390, height: 900, isMobile: true});

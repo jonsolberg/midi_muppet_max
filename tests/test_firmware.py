@@ -10,8 +10,9 @@ BUILD = os.path.join(HERE, '..', 'build')
 
 
 class Sim:
-    def __init__(self, elf, mcu):
-        self.p = subprocess.Popen([HARNESS, elf, mcu], stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True, bufsize=1)
+    def __init__(self, elf, mcu, mhz=16):
+        self.p = subprocess.Popen([HARNESS, elf, mcu], stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True, bufsize=1,
+                                  env={**os.environ, 'SIM_MHZ': str(mhz)})
         self.cmd('baud 0')   # read USB and MIDI output alike (the speed check is tested in the browser test)
         self.tx = b''
 
@@ -86,9 +87,9 @@ def press(s, b, ms):
     s.pin(b, 0); s.run(ms); s.pin(b, 1); s.run(60)
 
 
-def suite(elf, mcu):
-    print(f'===== {mcu}')
-    s = Sim(elf, mcu)
+def suite(elf, mcu, mhz):
+    print(f'===== {mcu} {mhz} MHz')
+    s = Sim(elf, mcu, mhz)
 
     # --- foot switch mode without the editor, default config
     s.run(2100); s.take()
@@ -103,7 +104,7 @@ def suite(elf, mcu):
 
     # --- setup mode
     hello = setup(s)
-    check('hello reply', hello.split(b'\r\n')[0], b'MM4 1 %s 53' % (b'168' if '168' in mcu else b'328'))
+    check('hello reply', hello.split(b'\r\n')[0], b'MM4 2 %s 53 %d' % (b'168' if '168' in mcu else b'328', mhz))
     s.send('R'); s.run(50)
     check('read default config', s.take().strip(), b'C ' + blob().hex().upper().encode())
     press(s, 3, 100)
@@ -205,11 +206,22 @@ def suite(elf, mcu):
     check('HX: mode remembered after power cycle (looper)', s.take(), b'\xB0\x47\x00')
     s.pin(2, 0); s.run(40)
     check('HX: still in looper after restart', s.take(), b'\xB0\x3C\x7F')
+    s.pin(2, 1); s.run(100)
+
+    # --- original two button MIDI Muppet HX: switches 3 and 4 are not read
+    setup(s)
+    two = blob(profile=1, flags=3 | 4, actions=[(NONE, 0, 0, 0, 0)] * 4 + [(CC, 0, 64, 127, 0)] * 4)
+    s.send('W ' + two.hex()); s.run(400); s.send('Q'); s.run(1000); s.take()
+    press(s, 3, 100); press(s, 4, 900)
+    check('two switches: switches 3 and 4 are ignored', s.take(), b'')
+    press(s, 2, 100)
+    check('two switches: DN still works (looper record or previous preset)', s.take() in (b'\xB0\x3C\x7F', b'\xB0\x48\x00'), True)
     s.close()
 
 
 if __name__ == '__main__':
     for mcu in ('atmega168', 'atmega328p'):
-        suite(os.path.join(BUILD, f'mm4config-{mcu}.elf'), mcu)
+        for mhz in (16, 8):
+            suite(os.path.join(BUILD, f'mm4config-{mcu}-{mhz}mhz.elf'), mcu, mhz)
     print('\nFAILURES:', failures)
     sys.exit(1 if failures else 0)

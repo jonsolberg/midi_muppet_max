@@ -3,10 +3,12 @@
 A four button Arduino MIDI foot switch that you set up from your browser.
 
 **[Open the web editor](https://jonsolberg.se:8080/MidiMuppet/)**: install the firmware, pick what every switch does and save it to the pedal over USB. No Arduino IDE needed.
+The editor also works with the **original two button [MIDI Muppet HX](https://github.com/mattzzw/midi_muppet_hx_2btn)**: choose
+*Original HX – 2 switches* and it behaves like the original, with the MIDI channel and looper settings in the editor.
 
 | Sketch | Pedal | What it does |
 |---|---|---|
-| [`midi_muppet_4btn_config`](midi_muppet_4btn_config/midi_muppet_4btn_config.ino) | Any MIDI device | **Universal firmware for the web editor.** Short and long press actions per switch, ready-made actions for HX Stomp, BOSS RC-500 and Wampler Terraform, and the MIDI Muppet HX modes |
+| [`midi_muppet_4btn_config`](midi_muppet_4btn_config/midi_muppet_4btn_config.ino) | Any MIDI device | **Universal firmware for the web editor**, for the 4btn and the original 2 button MIDI Muppet HX. Short and long press actions per switch, ready-made actions for HX Stomp, BOSS RC-500 and Wampler Terraform, and the MIDI Muppet HX modes |
 | [`midi_muppet_hx_4btn`](midi_muppet_hx_4btn/midi_muppet_hx_4btn.ino) | Line 6 HX Stomp | Preset/snapshot scrolling, FS4/FS5, looper, tuner, tap tempo, all bypass |
 | [`midi_Boss_RC500_4btn`](midi_Boss_RC500_4btn/midi_Boss_RC500_4btn.ino) | BOSS RC-500 Loop Station | Recalls 8 memories (short and long press) with Program Change |
 | [`midi_Wampler_Terraform_4btn`](midi_Wampler_Terraform_4btn/midi_Wampler_Terraform_4btn.ino) | Wampler Terraform | Recalls 8 presets (short and long press) with Program Change |
@@ -18,11 +20,15 @@ A four button Arduino MIDI foot switch that you set up from your browser.
 
 ![The MIDI Muppet 4btn web editor](images/editor.png)
 
+![The editor with the original two button MIDI Muppet HX](images/editor-original.png)
+
 The editor runs in Chrome, Edge or Opera on a computer (it uses Web Serial to talk to the Arduino):
 
 1. Connect the Arduino in the pedal to the computer with a USB cable.
-2. First time: click **Install firmware** and pick the Arduino's port. The editor finds the bootloader
-   (Nano with old or new bootloader, Pro Mini), checks the chip and installs the right firmware.
+2. First time: choose your Arduino (*Nano / Pro Mini 5 V* or *Pro Mini 3.3 V*), click **Install firmware**
+   and pick the Arduino's port. The editor finds the bootloader (Nano with old or new bootloader,
+   Pro Mini), checks the chip and installs the right firmware. A Pro Mini is programmed through its
+   USB–serial adapter, with DTR connected so the editor can restart it.
 3. Click **Connect pedal**. The pedal restarts and blinks green/red while it is in setup mode.
    Press a switch on the pedal and it lights up in the editor.
 4. Click a switch in the picture and choose its short and long press actions, or start from a ready-made setup.
@@ -38,6 +44,9 @@ What a switch can do:
 - **Wampler Terraform:** preset, next/previous preset.
 - **HX Stomp profile:** switches 1 and 2 work exactly like the original MIDI Muppet HX (scroll, footswitch,
   snapshot, looper and tuner modes, hold both to change mode), switches 3 and 4 get their own actions.
+- **Original MIDI Muppet HX (2 switches):** pick *Original HX – 2 switches* as the pedal, or the ready-made
+  setup of the same name. UP (D2) and DN (D3) work as before; switches 3 and 4 are not read.
+  Firmware is built for 16 MHz (Nano, Pro Mini 5 V) and 8 MHz (Pro Mini 3.3 V).
 
 A switch without a long press action reacts as soon as you step on it. With a long press action, the short
 press is sent when you lift your foot. The long press time, MIDI channel, LED feedback and red LED brightness
@@ -45,7 +54,7 @@ can be set too. Setups can be exported to a file and imported again.
 
 ### How it talks to the pedal
 
-After power-up the firmware listens on USB at 115200 baud for 1.5 seconds. If the editor says hello,
+After power-up the firmware listens on USB at 115200 baud (57600 on 8 MHz boards) for 1.5 seconds. If the editor says hello,
 it stays in setup mode. Otherwise it switches the serial port to MIDI speed (31250) and works as a foot
 switch, so nothing is sent to your other pedals while it listens. The setup protocol is plain text
 and is described at the top of the sketch.
@@ -54,17 +63,18 @@ and is described at the top of the sketch.
 
 `tests/` runs the real compiled firmware in the [simavr](https://github.com/buserror/simavr) AVR simulator:
 
-- `test_firmware.py` checks the setup protocol, every action type, short/long press timing and all
-  HX Stomp modes on both ATmega168 and ATmega328P.
+- `test_firmware.py` checks the setup protocol, every action type, short/long press timing, all
+  HX Stomp modes and the two switch mode on ATmega168 and ATmega328P, at 16 and 8 MHz.
 - `e2e.js` opens the editor in headless Chrome with a simulated serial port wired to the simulated
-  pedal. It installs the firmware through the real ATmega168 Nano bootloader, then connects, edits, saves and
-  checks the pedal's EEPROM and MIDI output.
+  pedal. It installs the firmware through the real ATmega168 Nano bootloader and the 3.3 V Pro Mini
+  bootloader, then connects, edits, saves and checks the pedal's EEPROM and MIDI output.
 
 ```
 tools/build_editor.py                       # builds firmware/*.hex and editor/index.html
 gcc -O2 -o tests/harness tests/harness.c -lsimavr -lelf
 python3 tests/test_firmware.py
-node tests/e2e.js build/mm4config-atmega168.elf atmega168 <ATmegaBOOT_168_diecimila.hex> nano168
+node tests/e2e.js <old sketch.elf> atmega168 <ATmegaBOOT_168_diecimila.hex> nano168 16
+SIM_MHZ=8 node tests/e2e.js <old sketch.elf> atmega328p <ATmegaBOOT_168_atmega328_pro_8MHz.hex> promini 8
 ```
 
 ## Credits
