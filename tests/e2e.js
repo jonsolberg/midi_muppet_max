@@ -51,15 +51,20 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 const simQuery = async (c, prefix) => { while (busy) await sleep(2); busy = true; try { const o = await simCmd(c, l => l.startsWith(prefix)); return o[o.length - 1].slice(prefix.length); } finally { busy = false; } };
 
 // ---------------------------------------------------------------- fake Web Serial
-const FAKE_SERIAL = () => {
+const FAKE_SERIAL = (firefox) => {
+  // firefox: like Firefox, end the incoming stream when the line glitches (port opened, Arduino
+  // restarted) and offer a new port.readable, which the editor has to pick up.
   let rx = null;
   const port = {
     readable: null, writable: null, _dtrLow: false,
+    _newStream() { this.readable = new ReadableStream({start(c) { rx = c; }, cancel() { rx = null; }}); },
+    _glitch() { if (!firefox || !this.readable) return; setTimeout(() => { try { rx && rx.close(); } catch (e) {} this._newStream(); }, 5); },
     async open(o) {
       if (this.readable) throw new Error('already open');
-      this.readable = new ReadableStream({start(c) { rx = c; }, cancel() { rx = null; }});
+      this._newStream();
       this.writable = new WritableStream({write(chunk) { window.__simWrite(Array.from(chunk)); }});
       await window.__simOpen(true, o.baudRate);  // opening a port pulses DTR: the Arduino restarts
+      this._glitch();
     },
     async close() {
       try { rx && rx.close(); } catch (e) {}
@@ -68,7 +73,7 @@ const FAKE_SERIAL = () => {
     },
     async setSignals(s) {
       if (s.dataTerminalReady === false) this._dtrLow = true;
-      else if (s.dataTerminalReady && this._dtrLow) { this._dtrLow = false; await window.__simReset(); }
+      else if (s.dataTerminalReady && this._dtrLow) { this._dtrLow = false; await window.__simReset(); this._glitch(); }
     },
     getInfo() { return {usbVendorId: 0x1a86, usbProductId: 0x7523}; },
   };
@@ -95,7 +100,7 @@ async function waitText(sel, re, ms) {
   await page.exposeFunction('__simWrite', bytes => { pending.push('sendhex ' + Buffer.from(bytes).toString('hex')); });
   await page.exposeFunction('__simReset', () => { pending.push('reset'); });
   await page.exposeFunction('__simOpen', (open, baud) => { portOpen = open; if (open) { pending.push('baud ' + baud); pending.push('reset'); } });
-  await page.evaluateOnNewDocument(FAKE_SERIAL);
+  await page.evaluateOnNewDocument(FAKE_SERIAL, !!process.env.FIREFOX_LIKE);
   await page.setViewport({width: 1280, height: 1000});
   await page.goto(EDITOR);
   await page.screenshot({path: `${SHOTS}/${tag}-1-start.png`, fullPage: true});

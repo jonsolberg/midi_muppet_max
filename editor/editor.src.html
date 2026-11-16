@@ -577,31 +577,37 @@ const pedal = {
   port: null, reader: null, writer: null, connected: false, lines: [], waiters: [], buf: '', info: null,
 
   async open(port, baud) {
-    this.port = port;
+    this.port = port; this.closing = false;
     await port.open({baudRate: baud});
     await logSignals(port, 'after open');
     this.writer = port.writable.getWriter();
     this.reading = this.readLoop();
   },
 
+  // Reads lines. If the browser ends the stream (Firefox does when the line glitches,
+  // e.g. while the Arduino restarts), a new port.readable appears: keep reading from it.
   async readLoop() {
-    this.reader = this.port.readable.getReader();
     const dec = new TextDecoder();
-    try {
-      for (;;) {
-        const {value, done} = await this.reader.read();
-        if (done) { log('serial: read stream ended'); break; }
-        rxLog(value);
-        this.buf += dec.decode(value, {stream: true});
-        let i;
-        while ((i = this.buf.indexOf('\n')) >= 0) {
-          const line = this.buf.slice(0, i).replace(/\r$/, ''); this.buf = this.buf.slice(i + 1);
-          this.onLine(line);
+    let ended = 0;
+    while (this.port && this.port.readable && !this.closing) {
+      try {
+        this.reader = this.port.readable.getReader();
+        for (;;) {
+          const {value, done} = await this.reader.read();
+          if (done) { if (ended++ < 5) log('serial: read stream ended, reading on'); break; }
+          rxLog(value);
+          this.buf += dec.decode(value, {stream: true});
+          let i;
+          while ((i = this.buf.indexOf('\n')) >= 0) {
+            const line = this.buf.slice(0, i).replace(/\r$/, ''); this.buf = this.buf.slice(i + 1);
+            this.onLine(line);
+          }
         }
-      }
-    } catch (e) { log('serial: read error ' + (e && e.message)); }
-    finally { try { this.reader.releaseLock(); } catch (e) {} }
-    if (this.connected) lost();
+      } catch (e) { if (ended++ < 5) log('serial: read error, reading on: ' + (e && e.message)); }
+      finally { try { this.reader.releaseLock(); } catch (e) {} }
+      if (!this.closing) await sleep(20);
+    }
+    if (this.connected && !this.closing) lost();
   },
 
   onLine(line) {
@@ -627,7 +633,7 @@ const pedal = {
   async request(cmd, test, ms = 1500) { const p = this.waitFor(test, ms); await this.send(cmd); return p; },
 
   async close() {
-    this.connected = false;
+    this.connected = false; this.closing = true;
     try { await this.reader?.cancel(); } catch (e) {}
     try { await this.reading; } catch (e) {}
     try { this.writer?.releaseLock(); } catch (e) {}
@@ -784,13 +790,25 @@ class Stk500 {
     await this.port.open({baudRate: baud});
     await logSignals(this.port, 'after open');
     this.writer = this.port.writable.getWriter();
-    this.reader = this.port.readable.getReader();
+    this.closing = false;
     this.loop = (async () => {
-      try { for (;;) { const {value, done} = await this.reader.read(); if (done) break; rxLog(value); for (const x of value) this.q.push(x); if (this.wait) this.wait(); } }
-      catch (e) { log('serial: read error ' + e.message); }
+      let ended = 0;
+      while (this.port.readable && !this.closing) {     // a new stream after a glitch: keep reading (Firefox)
+        try {
+          this.reader = this.port.readable.getReader();
+          for (;;) {
+            const {value, done} = await this.reader.read();
+            if (done) { if (ended++ < 5) log('serial: read stream ended, reading on'); break; }
+            rxLog(value); for (const x of value) this.q.push(x); if (this.wait) this.wait();
+          }
+        } catch (e) { if (ended++ < 5) log('serial: read error, reading on: ' + e.message); }
+        finally { try { this.reader.releaseLock(); } catch (e) {} }
+        if (!this.closing) await sleep(20);
+      }
     })();
   }
   async close() {
+    this.closing = true;
     try { await this.reader.cancel(); } catch (e) {}
     try { await this.loop; } catch (e) {}
     try { this.reader.releaseLock(); } catch (e) {}
