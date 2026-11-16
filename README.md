@@ -13,8 +13,10 @@ The editor also works with the **original two button [MIDI Muppet HX](https://gi
 | [`midi_Boss_RC500_4btn`](midi_Boss_RC500_4btn/midi_Boss_RC500_4btn.ino) | BOSS RC-500 Loop Station | Recalls 8 memories (short and long press) with Program Change |
 | [`midi_Wampler_Terraform_4btn`](midi_Wampler_Terraform_4btn/midi_Wampler_Terraform_4btn.ino) | Wampler Terraform | Recalls 8 presets (short and long press) with Program Change |
 
-![MIDI Muppet Multi 4btn, top](images/pedal_top.jpg)
-![MIDI Muppet Multi 4btn, MIDI and power sockets](images/pedal_front.jpg)
+<p>
+<img src="images/pedal_top.jpg" alt="MIDI Muppet Multi 4btn, top" width="280">
+<img src="images/pedal_front.jpg" alt="MIDI Muppet Multi 4btn, MIDI and power sockets" width="280">
+</p>
 
 ## Web editor
 
