@@ -43,6 +43,8 @@ main{max-width:1180px;margin:0 auto;padding:10px 20px 40px;display:grid;grid-tem
 .wrapn{max-width:1180px;margin:0 auto;padding:0 20px}
 /* pedal */
 .pedal-wrap{position:sticky;top:12px}
+/* one column (phones): don't pin the pedal, or the rest scrolls over it */
+@media (max-width:860px){.pedal-wrap{position:static}svg.pedal{max-width:260px}}
 svg.pedal{width:100%;max-width:340px;display:block;margin:0 auto}
 .sw{cursor:pointer}
 .sw .ring{fill:none;stroke:transparent;stroke-width:5}
