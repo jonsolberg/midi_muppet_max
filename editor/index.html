@@ -102,7 +102,7 @@ kbd{font:600 .8rem ui-monospace,monospace;background:var(--chip);border:1px soli
     <button id="btnDisconnect" hidden>Disconnect</button>
   </div>
 </header>
-<div class="wrapn"><div class="notice warn" id="firefoxNote">Firefox can't yet receive data from Arduinos with a <b>CH340</b> USB chip (most Nano clones) on Windows, so connecting and installing fail there. Please use <b>Chrome, Edge or Opera</b> for those boards.</div></div>
+<div class="wrapn"><div class="notice warn" id="firefoxNote"><b>The editor doesn't work in Firefox yet.</b> Firefox can't receive data from Arduinos with a CH340 USB chip (most Nano clones), so connecting and installing fail. Please use <b>Chrome, Edge or Opera</b> for now. This is a Firefox bug: <a href="https://bugzilla.mozilla.org/show_bug.cgi?id=2053974" target="_blank" rel="noopener">Mozilla bug 2053974</a>.</div></div>
 <div class="wrapn"><div class="notice warn" id="noSerial">Connecting to the pedal needs <b>Chrome, Edge or Opera on a computer</b> (Web Serial). You can still plan a setup here and export it to a file.</div></div>
 
 <main>
@@ -206,6 +206,7 @@ kbd{font:600 .8rem ui-monospace,monospace;background:var(--chip);border:1px soli
     <div class="card">
       <h2>How it works</h2>
       <ol style="margin:0;padding-left:20px">
+        <li>Use <b>Chrome, Edge or Opera</b> on a computer. Firefox doesn't work yet with most Nano clones (<a href="https://bugzilla.mozilla.org/show_bug.cgi?id=2053974" target="_blank" rel="noopener">Firefox bug</a>).</li>
         <li>Connect the Arduino in the pedal to the computer with a USB cable (a Pro Mini through its USB–serial adapter, with DTR connected).</li>
         <li>First time: click <b>Install firmware</b> and pick the Arduino's port. Your old sketch is replaced.</li>
         <li>Click <b>Connect pedal</b>. The pedal restarts and blinks green/red while it is in setup mode.</li>
@@ -561,7 +562,7 @@ function log(s) {
 }
 // Diagnostics: what actually happens on the port (limited, so the log stays readable)
 let rxLogged = 0, txLogged = 0, rxTotal = 0, streamDead = false;
-const DEAD_STREAM_MSG = 'Your browser stops receiving from this USB port – a known problem in Firefox with CH340 USB chips (most Nano clones). Please use Chrome, Edge or Opera.';
+const DEAD_STREAM_MSG = 'Your browser stops receiving from this USB port – a known Firefox bug with CH340 USB chips (most Nano clones, Mozilla bug 2053974). Please use Chrome, Edge or Opera.';
 function rxLog(v) {
   rxTotal += v.length;
   if (rxLogged < 12) { rxLogged++; log('serial: received ' + v.length + ' bytes: ' + hex(v.slice(0, 24)) + (v.length > 24 ? '…' : '')); }
