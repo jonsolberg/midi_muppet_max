@@ -90,6 +90,50 @@ const FAKE_SERIAL = (firefox, dead) => {
   Object.defineProperty(navigator, 'serial', {value: {requestPort: async () => port, getPorts: async () => [port], addEventListener() {}}});
 };
 
+// ---------------------------------------------------------------- fake WebUSB CH340 (Android)
+// Like Chrome on Android: Web Serial only lists Bluetooth devices, so the editor must use WebUSB.
+// The fake decodes the CH340 vendor requests: baud rate registers and the DTR line.
+const FAKE_USB = () => {
+  Object.defineProperty(navigator, 'serial', {value: {requestPort: async () => { throw new Error('Web Serial used on Android'); }, addEventListener() {}}});
+  let rxQ = [], rxWait = null, isOpen = false, dtr = false, reg = {}, baud = 0;
+  const dev = {
+    vendorId: 0x1a86, productId: 0x7523, configuration: null, opened: false,
+    async open() { this.opened = true; isOpen = true; },
+    async close() { this.opened = false; isOpen = false; dtr = false; if (rxWait) { const w = rxWait; rxWait = null; w.reject(new DOMException('closed', 'NetworkError')); } await window.__simOpen(false); },
+    async selectConfiguration() { this.configuration = {interfaces: [{interfaceNumber: 0, alternate: {interfaceClass: 0xff, endpoints: [
+      {endpointNumber: 2, direction: 'in', type: 'bulk', packetSize: 32},
+      {endpointNumber: 2, direction: 'out', type: 'bulk', packetSize: 32},
+      {endpointNumber: 1, direction: 'in', type: 'interrupt', packetSize: 8}]}}]}; },
+    async claimInterface() {},
+    async controlTransferIn(p, n) { return {status: 'ok', data: new DataView(new Uint8Array(n).buffer)}; },
+    async controlTransferOut(p) {
+      if (p.requestType !== 'vendor') throw new Error('CH340 got a non-vendor request');
+      if (p.request === 0x9a) {
+        reg[p.value] = p.index;
+        if (p.value === 0x0f2c && reg[0x1312] !== undefined) {   // both baud registers written
+          const v1 = reg[0x1312], f = 0x10000 - ((v1 & 0xff00) | p.index), d = v1 & 7;
+          baud = Math.round(1532620800 / (f * Math.pow(8, 3 - d)));
+          await window.__simBaud(baud);
+        }
+      }
+      if (p.request === 0xa4) {
+        const on = !(p.value & 0x20);
+        if (on && !dtr) await window.__simOpen(true, baud);    // DTR goes active: the Arduino restarts
+        dtr = on;
+      }
+      return {status: 'ok'};
+    },
+    transferIn(ep, n) {
+      if (!isOpen) return Promise.reject(new DOMException('not open', 'InvalidStateError'));
+      if (rxQ.length) { const b = rxQ.splice(0, n); return Promise.resolve({status: 'ok', data: new DataView(new Uint8Array(b).buffer)}); }
+      return new Promise((resolve, reject) => { rxWait = {resolve: () => resolve(dev.transferIn(ep, n)), reject}; });
+    },
+    async transferOut(ep, data) { window.__simWrite(Array.from(new Uint8Array(data.buffer || data, data.byteOffset || 0, data.byteLength))); return {status: 'ok', bytesWritten: data.byteLength}; },
+  };
+  window.__simRx = h => { if (!isOpen) return; rxQ.push(...h.match(/../g).map(x => parseInt(x, 16))); if (rxWait) { const w = rxWait; rxWait = null; w.resolve(); } };
+  Object.defineProperty(navigator, 'usb', {value: {requestDevice: async o => { window.__usbFilters = o.filters; return dev; }, addEventListener() {}}});
+};
+
 // ---------------------------------------------------------------- tests
 let failures = 0;
 const check = (name, ok, extra = '') => { if (!ok) failures++; console.log((ok ? 'PASS ' : 'FAIL ') + name + (ok ? '' : ' ' + extra)); };
@@ -109,7 +153,11 @@ async function waitText(sel, re, ms) {
   await page.exposeFunction('__simWrite', bytes => { pending.push('sendhex ' + Buffer.from(bytes).toString('hex')); });
   await page.exposeFunction('__simReset', () => { pending.push('reset'); });
   await page.exposeFunction('__simOpen', (open, baud) => { portOpen = open; if (open) { pending.push('baud ' + baud); pending.push('reset'); } });
-  await page.evaluateOnNewDocument(FAKE_SERIAL, !!process.env.FIREFOX_LIKE, !!process.env.FIREFOX_DEAD);
+  await page.exposeFunction('__simBaud', b => { pending.push('baud ' + b); });
+  if (process.env.USB_CH340) {
+    await page.setUserAgent('Mozilla/5.0 (Linux; Android 16; Pixel 9) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Mobile Safari/537.36');
+    await page.evaluateOnNewDocument(FAKE_USB);
+  } else await page.evaluateOnNewDocument(FAKE_SERIAL, !!process.env.FIREFOX_LIKE, !!process.env.FIREFOX_DEAD);
   await page.setViewport({width: 1280, height: 1000});
   await page.goto(EDITOR);
   await page.screenshot({path: `${SHOTS}/${tag}-1-start.png`, fullPage: true});
@@ -143,6 +191,7 @@ async function waitText(sel, re, ms) {
   await page.click('#btnConnect');
   const st = await waitText('#statusText', /^Connected|Not connected/, 20000);
   check('connects to the pedal', st === 'Connected', st + ' / ' + await text('#pedalMsg'));
+  if (process.env.USB_CH340) check('went through WebUSB (CH340 driver)', /usb: ch340 ready/.test(await text('#log')));
   const info = await text('#pedalInfo');
   check('shows firmware, chip and clock: ' + info, info.includes(mcu === 'atmega168' ? 'ATmega168' : 'ATmega328P') && info.includes(MHZ + ' MHz'));
   const legend = await page.$$eval('#legend li', l => l.map(x => x.textContent));

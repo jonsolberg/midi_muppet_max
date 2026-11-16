@@ -104,8 +104,8 @@ kbd{font:600 .8rem ui-monospace,monospace;background:var(--chip);border:1px soli
     <button id="btnDisconnect" hidden>Disconnect</button>
   </div>
 </header>
-<div class="wrapn"><div class="notice warn" id="firefoxNote"><b>The editor doesn't work in Firefox yet.</b> Firefox can't receive data from Arduinos with a CH340 USB chip (most Nano clones), so connecting and installing fail. Please use <b>Chrome, Edge or Opera</b> for now. This is a Firefox bug: <a href="https://bugzilla.mozilla.org/show_bug.cgi?id=2053974" target="_blank" rel="noopener">Mozilla bug 2053974</a>.</div></div>
-<div class="wrapn"><div class="notice warn" id="noSerial">Connecting to the pedal needs <b>Chrome, Edge or Opera on a computer</b> (Web Serial). You can still plan a setup here and export it to a file.</div></div>
+<div class="wrapn"><div class="notice warn" id="firefoxNote"><b>The editor doesn't work in Firefox yet.</b> On computers it can't receive data from Arduinos with a CH340 USB chip (most Nano clones), and on Android it can't reach USB devices at all. Please use <b>Chrome, Edge or Opera</b>, or <b>Chrome on Android</b>, for now. This is a Firefox bug: <a href="https://bugzilla.mozilla.org/show_bug.cgi?id=2053974" target="_blank" rel="noopener">Mozilla bug 2053974</a>.</div></div>
+<div class="wrapn"><div class="notice warn" id="noSerial">Connecting to the pedal needs <b>Chrome, Edge or Opera on a computer</b>, or <b>Chrome on Android</b> with a USB OTG cable. You can still plan a setup here and export it to a file.</div></div>
 
 <main>
   <section class="pedal-wrap">
@@ -208,7 +208,7 @@ kbd{font:600 .8rem ui-monospace,monospace;background:var(--chip);border:1px soli
     <div class="card">
       <h2>How it works</h2>
       <ol style="margin:0;padding-left:20px">
-        <li>Use <b>Chrome, Edge or Opera</b> on a computer. Firefox doesn't work yet with most Nano clones (<a href="https://bugzilla.mozilla.org/show_bug.cgi?id=2053974" target="_blank" rel="noopener">Firefox bug</a>).</li>
+        <li>Use <b>Chrome, Edge or Opera</b> on a computer, or <b>Chrome on Android</b> with a USB OTG cable. Firefox doesn't work yet with most Nano clones (<a href="https://bugzilla.mozilla.org/show_bug.cgi?id=2053974" target="_blank" rel="noopener">Firefox bug</a>).</li>
         <li>Connect the Arduino in the pedal to the computer with a USB cable (a Pro Mini through its USB–serial adapter, with DTR connected).</li>
         <li>First time: click <b>Install firmware</b> and pick the Arduino's port. Your old sketch is replaced.</li>
         <li>Click <b>Connect pedal</b>. The pedal restarts and blinks green/red while it is in setup mode.</li>
@@ -578,6 +578,165 @@ async function logSignals(port, when) {
   catch (e) { log('serial: getSignals not available (' + e.message + ')'); }
 }
 
+// ------------------------------------------------------------ USB serial over WebUSB (Android)
+// Chrome on Android only offers Bluetooth ports through Web Serial, but it has WebUSB. This drives
+// the common USB serial chips directly and looks like a Web Serial port to the rest of the editor.
+const USB_SERIAL_FILTERS = [
+  {vendorId: 0x1a86},                  // WCH CH340/CH341 (most Nano and Pro Mini clones)
+  {vendorId: 0x0403},                  // FTDI (original Nano, FTDI adapters)
+  {vendorId: 0x10c4},                  // Silicon Labs CP210x
+  {vendorId: 0x2341}, {vendorId: 0x2a03}, // Arduino boards with a USB chip of their own (CDC-ACM)
+  {classCode: 2},                      // any other CDC-ACM device
+];
+const useWebUsb = () => 'usb' in navigator && (/Android/i.test(navigator.userAgent) || !('serial' in navigator));
+
+class UsbSerialPort {
+  constructor(device) { this.device = device; this.readable = null; this.writable = null; this.dtr = false; this.rts = false; }
+  getInfo() { return {usbVendorId: this.device.vendorId, usbProductId: this.device.productId, via: 'WebUSB'}; }
+  get kind() {
+    const v = this.device.vendorId;
+    return v === 0x1a86 ? 'ch340' : v === 0x0403 ? 'ftdi' : v === 0x10c4 ? 'cp210x' : 'cdc';
+  }
+  // vendor/class control requests
+  out(request, value, index = 0, data, type = 'vendor', recipient = 'device') {
+    const p = {requestType: type, recipient, request, value: value & 0xffff, index: index & 0xffff};
+    return data ? this.device.controlTransferOut(p, data) : this.device.controlTransferOut(p);
+  }
+  in(request, value, index, length) {
+    return this.device.controlTransferIn({requestType: 'vendor', recipient: 'device', request, value, index}, length);
+  }
+
+  async open({baudRate}) {
+    const d = this.device;
+    if (this.readable) throw new Error('The port is already open.');
+    await d.open();
+    if (!d.configuration) await d.selectConfiguration(1);
+    // the interface with the bulk endpoints carries the data; CDC also has a control interface
+    let data = null, ctrl = null;
+    for (const itf of d.configuration.interfaces) {
+      const alt = itf.alternate;
+      if (alt.interfaceClass === 2) ctrl = itf;
+      if (!data && alt.endpoints.some(e => e.type === 'bulk' && e.direction === 'in') && alt.endpoints.some(e => e.type === 'bulk' && e.direction === 'out')) data = itf;
+    }
+    if (!data) throw new Error('No serial data interface on this USB device.');
+    this.ifc = data.interfaceNumber; this.ctrlIfc = ctrl ? ctrl.interfaceNumber : this.ifc;
+    for (const itf of new Set([ctrl, data])) if (itf) { try { await d.claimInterface(itf.interfaceNumber); } catch (e) { if (itf === data) throw e; } }
+    const eps = data.alternate.endpoints;
+    this.epIn = eps.find(e => e.type === 'bulk' && e.direction === 'in');
+    this.epOut = eps.find(e => e.type === 'bulk' && e.direction === 'out');
+    await this.init(baudRate);
+    log('usb: ' + this.kind + ' ready at ' + baudRate + ' baud');
+    await this.setSignals({dataTerminalReady: true, requestToSend: true});  // like a computer opening the port
+    this.startStreams();
+  }
+
+  async init(baud) {
+    switch (this.kind) {
+      case 'ch340': {   // as Linux ch341.c / usb-serial-for-android
+        await this.in(0x5f, 0, 0, 2);
+        await this.out(0xa1, 0, 0);
+        await this.ch340Baud(baud);
+        await this.in(0x95, 0x2518, 0, 2);
+        await this.out(0x9a, 0x2518, 0x00c3);      // 8 data bits, no parity, 1 stop bit, rx+tx on
+        await this.in(0x95, 0x0706, 0, 2);
+        await this.out(0xa1, 0x501f, 0xd90a);
+        await this.ch340Baud(baud);
+        break;
+      }
+      case 'ftdi': {
+        await this.out(0, 0, 0);                    // reset
+        await this.out(2, 0, 0);                    // no flow control
+        await this.out(9, 1, 0);                    // latency timer 1 ms
+        const div8 = Math.round(24000000 / baud);  // 3 MHz base clock, in 1/8 steps
+        const frac = [0, 3, 2, 4, 1, 5, 6, 7][div8 & 7];
+        const enc = (div8 >> 3) | (frac << 14);
+        await this.out(3, enc, enc >> 16);          // baud rate
+        await this.out(4, 0x0008, 0);               // 8N1
+        break;
+      }
+      case 'cp210x': {
+        const r = 'interface', i = this.ifc;
+        await this.out(0x00, 1, i, undefined, 'vendor', r);                    // enable
+        await this.out(0x1e, 0, i, new Uint32Array([baud]).buffer, 'vendor', r); // baud rate
+        await this.out(0x03, 0x0800, i, undefined, 'vendor', r);               // 8N1
+        break;
+      }
+      default: {        // CDC-ACM: SET_LINE_CODING
+        const lc = new DataView(new ArrayBuffer(7));
+        lc.setUint32(0, baud, true); lc.setUint8(4, 0); lc.setUint8(5, 0); lc.setUint8(6, 8);
+        await this.out(0x20, 0, this.ctrlIfc, lc.buffer, 'class', 'interface');
+      }
+    }
+  }
+  async ch340Baud(baud) {
+    let factor = Math.floor(1532620800 / baud), divisor = 3;
+    while (factor > 0xfff0 && divisor > 0) { factor >>= 3; divisor--; }
+    if (factor > 0xfff0) throw new Error('Unsupported baud rate ' + baud);
+    factor = 0x10000 - factor;
+    await this.out(0x9a, 0x1312, (factor & 0xff00) | divisor | 0x80);
+    await this.out(0x9a, 0x0f2c, factor & 0xff);
+  }
+
+  async setSignals(s) {
+    if ('dataTerminalReady' in s) this.dtr = !!s.dataTerminalReady;
+    if ('requestToSend' in s) this.rts = !!s.requestToSend;
+    const dtr = this.dtr, rts = this.rts;
+    switch (this.kind) {
+      case 'ch340': return this.out(0xa4, ~((dtr ? 0x20 : 0) | (rts ? 0x40 : 0)), 0);
+      case 'ftdi': return this.out(1, (dtr ? 1 : 0) | (rts ? 2 : 0) | 0x0300, 0);
+      case 'cp210x': return this.out(0x07, (dtr ? 1 : 0) | (rts ? 2 : 0) | 0x0300, this.ifc, undefined, 'vendor', 'interface');
+      default: return this.out(0x22, (dtr ? 1 : 0) | (rts ? 2 : 0), this.ctrlIfc, undefined, 'class', 'interface');
+    }
+  }
+  async getSignals() { throw new Error('not available over WebUSB'); }
+
+  startStreams() {
+    const port = this, d = this.device, inNo = this.epIn.endpointNumber, size = this.epIn.packetSize || 64;
+    const ftdi = this.kind === 'ftdi';
+    this.closed = false;
+    this.readable = new ReadableStream({
+      async pull(c) {
+        for (;;) {
+          let r;
+          try { r = await d.transferIn(inNo, ftdi ? 512 : size); }
+          catch (e) { if (port.closed) { try { c.close(); } catch (x) {} } else c.error(e); port.readable = null; return; }
+          if (r.status === 'stall') { try { await d.clearHalt('in', inNo); } catch (e) {} continue; }
+          let b = new Uint8Array(r.data.buffer, r.data.byteOffset, r.data.byteLength);
+          if (ftdi) {   // every 64 byte packet starts with 2 status bytes
+            const parts = [];
+            for (let i = 0; i < b.length; i += 64) parts.push(...b.slice(i + 2, Math.min(i + 64, b.length)));
+            b = new Uint8Array(parts);
+          }
+          if (b.length) { c.enqueue(b); return; }
+          if (ftdi) await new Promise(r => setTimeout(r, 2));   // FTDI answers at once, even with nothing
+        }
+      },
+    });
+    this.writable = new WritableStream({
+      async write(chunk) {
+        const r = await d.transferOut(port.epOut.endpointNumber, chunk);
+        if (r.status !== 'ok') throw new Error('USB write ' + r.status);
+      },
+    });
+  }
+
+  async close() {
+    this.closed = true;
+    try { await this.setSignals({dataTerminalReady: false, requestToSend: false}); } catch (e) {}
+    try { await this.device.close(); } catch (e) {}
+    this.readable = null; this.writable = null;
+  }
+}
+
+// Ask for a port: Web Serial on computers, WebUSB on Android
+async function requestSerialPort() {
+  if (useWebUsb()) {
+    const dev = await navigator.usb.requestDevice({filters: USB_SERIAL_FILTERS});
+    return new UsbSerialPort(dev);
+  }
+  return navigator.serial.requestPort();
+}
+
 // ------------------------------------------------------------ serial: setup protocol
 const pedal = {
   port: null, reader: null, writer: null, connected: false, lines: [], waiters: [], buf: '', info: null,
@@ -664,7 +823,7 @@ async function resetBoard(port) {
 
 async function choosePort() {
   if (pedal.port) return pedal.port;
-  return navigator.serial.requestPort();
+  return requestSerialPort();
 }
 
 async function connect() {
@@ -761,7 +920,7 @@ function updateButtons() {
   $('btnSave').disabled = $('btnRead').disabled = $('btnLed').disabled = !on;
   $('btnConnect').hidden = on; $('btnDisconnect').hidden = !on;
   $('liveHint').style.display = on ? '' : 'none';
-  $('btnFlash').disabled = !('serial' in navigator);
+  $('btnFlash').disabled = !('serial' in navigator || 'usb' in navigator);
   setDirty(state.dirty);
 }
 
@@ -874,7 +1033,7 @@ class Stk500 {
 async function flash() {
   let port;
   if (pedal.connected || pedal.port) { port = pedal.port; await pedal.close(); pedal.port = null; status('Not connected'); updateButtons(); }
-  try { port = port || await navigator.serial.requestPort(); } catch (e) { return; }
+  try { port = port || await requestSerialPort(); } catch (e) { return; }
   $('btnFlash').disabled = $('btnConnect').disabled = true;
   const prog = $('flashProgress'); prog.hidden = false; prog.value = 0;
   msg('flashMsg', 'Looking for the Arduino bootloader…');
@@ -948,8 +1107,9 @@ $('btnCopyLog').onclick = async () => {
 
 // ------------------------------------------------------------ start
 try { const m = localStorage.getItem('mm-mhz'); if (m) $('board').value = m; } catch (e) {}
-if (!('serial' in navigator)) { $('noSerial').classList.add('show'); $('btnConnect').disabled = true; }
-if (/Firefox\//.test(navigator.userAgent)) $('firefoxNote').classList.add('show');
+if (!('serial' in navigator) && !('usb' in navigator)) { $('noSerial').classList.add('show'); $('btnConnect').disabled = true; }
+if (/Firefox\//.test(navigator.userAgent)) { $('firefoxNote').classList.add('show'); $('noSerial').classList.remove('show'); }
+else if (useWebUsb()) navigator.usb.addEventListener?.('disconnect', e => { if (pedal.port && e.device === pedal.port.device && pedal.connected) { pedal.close(); lost(); } });
 else navigator.serial.addEventListener?.('disconnect', e => { if (e.target === pedal.port && pedal.connected) { pedal.close(); lost(); } });
 window.addEventListener('beforeunload', e => { if (state.dirty && pedal.connected) { e.preventDefault(); e.returnValue = ''; } });
 window.__mm = {state, encode, decode, pedal, renderAll, CHOICES};   // for tests and the curious

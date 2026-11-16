@@ -25,6 +25,8 @@ The editor also works with the **original two button [MIDI Muppet HX](https://gi
 ![The editor with the original two button MIDI Muppet HX](images/editor-original.png)
 
 The editor runs in Chrome, Edge or Opera on a computer (it uses Web Serial to talk to the Arduino).
+On an Android phone, use Chrome and a USB OTG cable: there the editor drives the USB chip itself through
+WebUSB (CH340, FTDI, CP210x and CDC-ACM boards), because Web Serial on Android only lists Bluetooth devices.
 Firefox has Web Serial since version 151, but on Windows it can't yet receive data from boards with a CH340
 USB chip (most Nano clones): the read stream ends at once, again and again
 ([Mozilla bug 2053974](https://bugzilla.mozilla.org/show_bug.cgi?id=2053974)). The editor says so when it happens.
@@ -74,7 +76,7 @@ and is described at the top of the sketch.
 
 - `test_firmware.py` checks the setup protocol, every action type, short/long press timing, all
   HX Stomp modes and the two switch mode on ATmega168 and ATmega328P, at 16 and 8 MHz.
-- `e2e.js` opens the editor in headless Chrome with a simulated serial port wired to the simulated
+- `e2e.js` opens the editor in headless Chrome with a simulated serial port (or, with `USB_CH340=1`, a simulated CH340 over WebUSB, as on Android) wired to the simulated
   pedal. It installs the firmware through the real ATmega168 Nano bootloader and the 3.3 V Pro Mini
   bootloader, then connects, edits, saves and checks the pedal's EEPROM and MIDI output.
 
