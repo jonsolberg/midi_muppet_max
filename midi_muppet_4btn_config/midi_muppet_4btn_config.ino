@@ -61,7 +61,8 @@
   Hardware (same as the other MIDI Muppet 4btn sketches)
   --------
   - Buttons 1-4      D2, D3, D6, D8 (to ground, internal pull-ups)
-  - LED green / red  D4, D5 (bicolor LED, common cathode, red dimmable)
+  - LED green / red  D4, D5 (bicolor LED, common cathode or common anode,
+                     red dimmable)
   - MIDI out         TX (D1)
   - Board: Arduino Nano or Pro Mini, ATmega168 or ATmega328P,
     16 MHz (5 V) or 8 MHz (3.3 V Pro Mini) - build with the matching board setting
@@ -116,7 +117,7 @@
 
 #include <EEPROM.h>
 
-#define FW_VERSION 2
+#define FW_VERSION 3
 
 // ---------------------------------------------------------------- pins
 const uint8_t BTN_PINS[4] = {2, 3, 6, 8};
@@ -138,6 +139,8 @@ enum { P_MAGIC0 = 0, P_MAGIC1, P_VERSION, P_PROFILE, P_CHANNEL, P_FLAGS,
 #define FLAG_LED_FEEDBACK 0x01
 #define FLAG_HX_LOOPER    0x02
 #define FLAG_TWO_SWITCHES 0x04   // original two button MIDI Muppet HX: only switches 1 and 2
+#define FLAG_LED_INVERTED 0x08   // common anode LED: a colour is lit when its pin is LOW
+#define FLAG_LED_HOLD     0x10   // generic profile: LED lit only while a switch is held
 
 enum { A_NONE = 0, A_PC, A_CC, A_CC_TOGGLE, A_CC_MOMENTARY, A_PC_NEXT, A_PC_PREV, A_HX_TUNER };
 
@@ -216,12 +219,23 @@ uint8_t flashLed = 0, flashLeft = 0;     // flashLeft counts on+off halves
 unsigned long flashNext = 0;
 #define FLASH_MS 70
 
+bool ledInverted() { return cfg[P_FLAGS] & FLAG_LED_INVERTED; }
+bool greenOn = false;
+
 void ledRed(bool on) {
-  if (on) analogWrite(LED_RED, cfg[P_RED]);
-  else digitalWrite(LED_RED, LOW);
+  if (!ledInverted()) {
+    if (on) analogWrite(LED_RED, cfg[P_RED]);
+    else digitalWrite(LED_RED, LOW);
+  } else {
+    if (on) analogWrite(LED_RED, 255 - cfg[P_RED]);   // common anode: low = lit
+    else digitalWrite(LED_RED, HIGH);
+  }
 }
 
-void ledGreen(bool on) { digitalWrite(LED_GRN, on ? HIGH : LOW); }
+void ledGreen(bool on) {
+  greenOn = on;
+  digitalWrite(LED_GRN, (on != ledInverted()) ? HIGH : LOW);
+}
 
 void flash(uint8_t led, uint8_t times) {
   if (!(cfg[P_FLAGS] & FLAG_LED_FEEDBACK) || times == 0) return;
@@ -374,6 +388,18 @@ void genericLong(uint8_t b) {
   if (hasLong(b)) runAction(b * 2 + 1, false);
 }
 
+// LED lit only while a switch is held: green, red once its long press has started
+void holdLeds() {
+  bool down = false, longp = false;
+  for (uint8_t i = 0; i < switches(); i++) {
+    if (!btn[i].down) continue;
+    down = true;
+    if (hasLong(i) && millis() - btn[i].downAt >= longMs()) longp = true;
+  }
+  ledGreen(down && !longp);
+  ledRed(longp);
+}
+
 // ---------------------------------------------------------------- HX Stomp profile
 // Buttons 1 and 2 are UP and DN of the original MIDI Muppet HX.
 #define BTN_UP 0
@@ -505,7 +531,7 @@ void hxLeds() {
     case FS:       ledRed(false); ledGreen(true); break;
     case TUNER:
       ledRed(false);
-      if (millis() - lastBlink >= 500) { lastBlink = millis(); ledGreen(!digitalRead(LED_GRN)); }
+      if (millis() - lastBlink >= 500) { lastBlink = millis(); ledGreen(!greenOn); }
       break;
     case LOOPER:
       ledGreen(LPR_MODE == PLAY || LPR_MODE == OVERDUB);
@@ -644,14 +670,15 @@ void startFootSwitch() {
     hxEnterMode((modes_t)m);
   } else {
     onDown = genericDown; onUp = genericUp; onLong = genericLong;
-    flashBlocking(LED_GRN, 3, 60);
+    if (cfg[P_FLAGS] & FLAG_LED_FEEDBACK) flashBlocking(LED_GRN, 3, 60);   // "I'm alive"
   }
 }
 
 void setup() {
+  loadConfig();
+  ledGreen(false); ledRed(false);     // set the "off" level before the pins become outputs
   pinMode(LED_RED, OUTPUT);
   pinMode(LED_GRN, OUTPUT);
-  loadConfig();
   initButtons();
   if (editorPresent()) setupMode();
   startFootSwitch();
@@ -661,4 +688,5 @@ void loop() {
   readButtons();
   if (flashing()) updateFlash();
   else if (cfg[P_PROFILE] == PROFILE_HX) hxLeds();
+  else if (cfg[P_FLAGS] & FLAG_LED_HOLD) holdLeds();
 }

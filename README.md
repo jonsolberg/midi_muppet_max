@@ -48,6 +48,9 @@ What a switch can do:
   setup of the same name. UP (D2) and DN (D3) work as before; switches 3 and 4 are not read.
   Firmware is built for 16 MHz (Nano, Pro Mini 5 V) and 8 MHz (Pro Mini 3.3 V).
 
+The LED can flash when a switch sends, light only while a switch is held (green, red once a long press starts)
+or stay off, and works with common cathode and common anode bicolor LEDs.
+
 A switch without a long press action reacts as soon as you step on it. With a long press action, the short
 press is sent when you lift your foot. The long press time, MIDI channel, LED feedback and red LED brightness
 can be set too. Setups can be exported to a file and imported again.

@@ -136,8 +136,17 @@ kbd{font:600 .8rem ui-monospace,monospace;background:var(--chip);border:1px soli
           <select id="channel"></select></div>
         <div class="row"><label for="longMs">Long press</label>
           <div><input type="range" id="longMs" min="200" max="2000" step="50"><div class="hint" id="longMsVal"></div></div></div>
-        <div class="row"><label for="ledFeedback">LED</label>
-          <label style="color:var(--ink)"><input type="checkbox" id="ledFeedback"> Flash when a switch sends something</label></div>
+        <div class="row"><label for="ledMode">LED</label>
+          <select id="ledMode">
+            <option value="flash">Flash when a switch sends</option>
+            <option value="hold">Light while a switch is held</option>
+            <option value="off">Off</option>
+          </select><div class="hint" style="grid-column:2" id="ledHint"></div></div>
+        <div class="row"><label for="ledType">LED type</label>
+          <select id="ledType">
+            <option value="0">Common cathode (most)</option>
+            <option value="1">Common anode</option>
+          </select><div class="hint" style="grid-column:2">If the LED is lit (often yellow) when it should be off, choose common anode.</div></div>
         <div class="row"><label for="red">Red LED brightness</label>
           <div><input type="range" id="red" min="1" max="255"><div class="hint">Many bicolor LEDs are much brighter in red – turn it down if it dazzles.</div></div></div>
         <div class="row" id="looperRow"><label for="looper">HX looper mode</label>
@@ -222,7 +231,7 @@ kbd{font:600 .8rem ui-monospace,monospace;background:var(--chip);border:1px soli
 // ------------------------------------------------------------ config format (matches the firmware)
 const CFG_SIZE = 53, CFG_VERSION = 1;
 const T = {NONE:0, PC:1, CC:2, TOGGLE:3, MOMENTARY:4, NEXT:5, PREV:6, HXTUNER:7};
-const FLAG_LED = 1, FLAG_LOOPER = 2, FLAG_TWO = 4;
+const FLAG_LED = 1, FLAG_LOOPER = 2, FLAG_TWO = 4, FLAG_LED_INV = 8, FLAG_LED_HOLD = 16;
 const POS_NAMES = ['Top left', 'Top right', 'Bottom left', 'Bottom right'];
 const POS_NAMES_2 = ['Left', 'Right'];
 const posName = (c, b) => (c.twoSwitches ? POS_NAMES_2 : POS_NAMES)[c.pos[b]];
@@ -233,7 +242,7 @@ const act = (type, ch = 0, a = 0, b = 0, c = 0) => ({type, ch, a, b, c});
 
 function defaultConfig() {
   const progs = [[1, 5], [0, 4], [3, 7], [2, 6]];
-  return {profile: 0, channel: 0, ledFeedback: true, looper: true, twoSwitches: false, red: 64, longMs: 800, pos: [0, 1, 2, 3],
+  return {profile: 0, channel: 0, ledMode: 'flash', ledInverted: false, looper: true, twoSwitches: false, red: 64, longMs: 800, pos: [0, 1, 2, 3],
           actions: progs.flatMap(([s, l]) => [act(T.PC, 0, s), act(T.PC, 0, l)])};
 }
 
@@ -241,7 +250,8 @@ function encode(c) {
   const b = new Uint8Array(CFG_SIZE);
   b[0] = 77; b[1] = 52; b[2] = CFG_VERSION;
   b[3] = c.profile; b[4] = c.channel;
-  b[5] = (c.ledFeedback ? FLAG_LED : 0) | (c.looper ? FLAG_LOOPER : 0) | (c.twoSwitches ? FLAG_TWO : 0);
+  b[5] = (c.ledMode === 'flash' ? FLAG_LED : 0) | (c.ledMode === 'hold' ? FLAG_LED_HOLD : 0) | (c.looper ? FLAG_LOOPER : 0) |
+         (c.twoSwitches ? FLAG_TWO : 0) | (c.ledInverted ? FLAG_LED_INV : 0);
   b[6] = c.red; b[7] = Math.round(c.longMs / 10);
   c.pos.forEach((p, i) => b[8 + i] = p);
   c.actions.forEach((x, i) => b.set([x.type, x.ch, x.a, x.b, x.c], 12 + i * 5));
@@ -255,7 +265,8 @@ function decode(b) {
   if (b[2] !== CFG_VERSION) throw new Error('setup version ' + b[2] + ' is not supported');
   const actions = [];
   for (let i = 0; i < 8; i++) { const o = 12 + i * 5; actions.push(act(b[o], b[o + 1], b[o + 2], b[o + 3], b[o + 4])); }
-  return {profile: b[3], channel: b[4], ledFeedback: !!(b[5] & FLAG_LED), looper: !!(b[5] & FLAG_LOOPER), twoSwitches: !!(b[5] & FLAG_TWO),
+  return {profile: b[3], channel: b[4], ledMode: (b[5] & FLAG_LED_HOLD) ? 'hold' : (b[5] & FLAG_LED) ? 'flash' : 'off',
+          ledInverted: !!(b[5] & FLAG_LED_INV), looper: !!(b[5] & FLAG_LOOPER), twoSwitches: !!(b[5] & FLAG_TWO),
           red: b[6], longMs: b[7] * 10, pos: [b[8], b[9], b[10], b[11]], actions};
 }
 
@@ -477,7 +488,9 @@ function renderSettings() {
   $('profile').value = c.profile;
   $('channel').innerHTML = Array.from({length: 16}, (_, i) => `<option value="${i}"${c.channel === i ? ' selected' : ''}>${i + 1}</option>`).join('');
   $('longMs').value = c.longMs; $('longMsVal').textContent = (c.longMs / 1000).toFixed(2).replace(/0$/, '') + ' s';
-  $('ledFeedback').checked = c.ledFeedback; $('red').value = c.red; $('looper').checked = c.looper;
+  $('ledMode').value = c.ledMode; $('ledType').value = c.ledInverted ? '1' : '0'; $('red').value = c.red; $('looper').checked = c.looper;
+  $('ledHint').textContent = c.profile === 1 ? 'In the HX Stomp profile the LED shows the mode; this setting is used for the flashes.'
+    : c.ledMode === 'hold' ? 'Green while you press a switch, red once its long press starts.' : '';
   $('looperRow').style.display = c.profile === 1 ? '' : 'none';
   $('profileHint').textContent = c.profile === 1
     ? (c.twoSwitches ? 'Switch 1 is UP and switch 2 is DN, exactly like the original MIDI Muppet HX.' : 'Switches 1 and 2 are UP and DN of the original MIDI Muppet HX; 3 and 4 have their own actions.')
@@ -498,13 +511,14 @@ $('hardware').onchange = e => {
 $('profile').onchange = e => { state.cfg.profile = +e.target.value; if (state.cfg.profile === 1) state.pedalHint = 'hx'; changed(); renderAll(); };
 $('channel').onchange = e => { state.cfg.channel = +e.target.value; changed(); };
 $('longMs').oninput = e => { state.cfg.longMs = +e.target.value; renderSettings(); changed(); renderButton(); };
-$('ledFeedback').onchange = e => { state.cfg.ledFeedback = e.target.checked; changed(); };
+$('ledMode').onchange = e => { state.cfg.ledMode = e.target.value; changed(); renderSettings(); };
+$('ledType').onchange = e => { state.cfg.ledInverted = e.target.value === '1'; changed(); };
 $('red').onchange = e => { state.cfg.red = +e.target.value; changed(); };
 $('looper').onchange = e => { state.cfg.looper = e.target.checked; changed(); };
 $('btnTemplate').onclick = () => {
   const t = $('template').value; if (!t) return;
   const n = TEMPLATES[t](); state.pedalHint = n.hint || null; delete n.hint;
-  n.channel = state.cfg.channel;
+  n.channel = state.cfg.channel; n.ledInverted = state.cfg.ledInverted;
   if (t !== 'original') { n.pos = state.cfg.pos.slice(); n.twoSwitches = state.cfg.twoSwitches; }
   if (state.sel >= (n.twoSwitches ? 2 : 4)) state.sel = 0;
   state.cfg = n; changed(); renderAll();

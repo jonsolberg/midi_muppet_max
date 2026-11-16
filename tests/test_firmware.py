@@ -47,6 +47,12 @@ class Sim:
 
     def reset(self): self.cmd('reset'); self.tx = b''
 
+    def green(self):
+        self.cmd('led')
+        while True:
+            l = self.p.stdout.readline().strip()
+            if l.startswith('LED g='): return int(l[6:])
+
     def close(self): self.cmd('quit'); self.p.wait()
 
 
@@ -104,7 +110,7 @@ def suite(elf, mcu, mhz):
 
     # --- setup mode
     hello = setup(s)
-    check('hello reply', hello.split(b'\r\n')[0], b'MM4 2 %s 53 %d' % (b'168' if '168' in mcu else b'328', mhz))
+    check('hello reply', hello.split(b'\r\n')[0], b'MM4 3 %s 53 %d' % (b'168' if '168' in mcu else b'328', mhz))
     s.send('R'); s.run(50)
     check('read default config', s.take().strip(), b'C ' + blob().hex().upper().encode())
     press(s, 3, 100)
@@ -216,7 +222,27 @@ def suite(elf, mcu, mhz):
     check('two switches: switches 3 and 4 are ignored', s.take(), b'')
     press(s, 2, 100)
     check('two switches: DN still works (looper record or previous preset)', s.take() in (b'\xB0\x3C\x7F', b'\xB0\x48\x00'), True)
-    s.close()
+    # --- LED: light while held, common anode LED (lit when the pin is LOW)
+    def led_setup(flags):
+        setup(s)
+        s.send('W ' + blob(flags=flags).hex()); s.run(400); s.send('Q'); s.run(900); s.take()
+    led_setup(0x10)                       # hold mode, common cathode
+    check('hold LED: off when idle (no start-up blinks)', s.green(), 0)
+    s.pin(1, 0); s.run(100)
+    check('hold LED: green while switch 1 is held', s.green(), 1)
+    s.run(900)
+    check('hold LED: green goes off once the long press starts (turns red)', s.green(), 0)
+    s.pin(1, 1); s.run(100)
+    check('hold LED: off after release', s.green(), 0)
+    led_setup(0x10 | 0x08)                # hold mode, common anode
+    check('common anode: green pin high (= off) when idle', s.green(), 1)
+    s.pin(2, 0); s.run(100)
+    check('common anode: green pin low (= lit) while held', s.green(), 0)
+    s.pin(2, 1); s.run(100)
+    check('common anode: off again after release', s.green(), 1)
+    s.reset(); s.run(2100)
+    check('common anode: off right after power-up', s.green(), 1)
+    s.take(); s.close()
 
 
 if __name__ == '__main__':
