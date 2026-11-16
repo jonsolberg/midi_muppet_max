@@ -1,0 +1,121 @@
+# MIDI Muppet Multi 4btn
+
+A four button Arduino MIDI foot switch, with firmware for three different pedals:
+
+| Sketch | Pedal | What it does |
+|---|---|---|
+| [`midi_muppet_hx_4btn`](midi_muppet_hx_4btn/midi_muppet_hx_4btn.ino) | Line 6 HX Stomp | Preset/snapshot scrolling, FS4/FS5, looper, tuner, tap tempo, all bypass |
+| [`midi_Boss_RC500_4btn`](midi_Boss_RC500_4btn/midi_Boss_RC500_4btn.ino) | BOSS RC-500 Loop Station | Recalls 8 memories (short and long press) with Program Change |
+| [`midi_Wampler_Terraform_4btn`](midi_Wampler_Terraform_4btn/midi_Wampler_Terraform_4btn.ino) | Wampler Terraform | Recalls 8 presets (short and long press) with Program Change |
+
+![MIDI Muppet Multi 4btn, top](images/pedal_top.jpg)
+![MIDI Muppet Multi 4btn, MIDI and power sockets](images/pedal_front.jpg)
+
+## Credits
+
+This project is built on **[MIDI Muppet HX](https://github.com/mattzzw/midi_muppet_hx_2btn)**
+by **Matthias Wientapper**, a two button MIDI foot switch for the HX Stomp. The HX Stomp
+sketch here is his code extended to four buttons, and the other two sketches reuse his MIDI
+and LED code. Thank you, Matthias. His build guide, schematic and photos are well worth a
+look if you want to build one yourself.
+
+MIDI Muppet HX is licensed under the BSD 3-Clause License. Its copyright notice is kept in
+every sketch and in [LICENSE-midi_muppet.txt](LICENSE-midi_muppet.txt).
+
+## Hardware
+
+Same build as the original MIDI Muppet HX, with two extra foot switches:
+
+| Arduino pin | Connected to |
+|---|---|
+| D2, D3 | Foot switches (HX: UP / DN), other leg to ground |
+| D6, D8 | Foot switches (HX: TAP / FOUR), other leg to ground |
+| D4, D5 | Bicolor LED green / red via 220R, common cathode to ground |
+| TX (D1) | MIDI pin 5 via 220R |
+| 5V | MIDI pin 4 via 220R |
+| VIN / RAW, GND | 9V power socket |
+
+The buttons use the Arduino's internal pull-ups, so no resistors are needed for them.
+For a 3.3V Arduino, see the resistor values in the
+[original build guide](https://github.com/mattzzw/midi_muppet_hx_2btn#building-midi-muppet-hx).
+
+## Building the firmware
+
+1. Install the libraries with the Arduino IDE library manager:
+   [OneButton](https://github.com/mathertel/OneButton) (all sketches) and
+   [JC_Button](https://github.com/JChristensen/JC_Button) (HX Stomp sketch).
+2. Open the sketch for your pedal.
+3. Select your board, for example **Arduino Nano** with processor **ATmega168** (or ATmega328P).
+4. Disconnect the MIDI cable while uploading, since MIDI uses the same TX pin as the USB upload.
+
+All three sketches build for both the ATmega168 and the ATmega328P.
+
+## HX Stomp
+
+The UP/DN buttons work like the original MIDI Muppet HX; TAP and FOUR are new:
+
+| Button | Click | Long press |
+|---|---|---|
+| UP | Next preset / snapshot, FS5, looper play/stop | Snapshot mode on/off, looper undo/redo |
+| DN | Previous preset / snapshot, FS4, looper record/overdub | Tuner |
+| TAP | Tap tempo | Tuner |
+| FOUR | Toggles MIDI CC 6 (assign it to a block on the HX Stomp) | All bypass on/off |
+| UP + DN | Cycle Scroll → FS → Looper mode | |
+
+| Mode | LED |
+|---|---|
+| Scroll | red |
+| FS / Snapshot | green |
+| Tuner | blinking green |
+| Looper | play: green, record: red, overdub: yellow |
+
+Power-up configuration, as in the original:
+
+- **Hold DN while powering up** to set the MIDI channel (UP/DN changes it, hold both to exit).
+- **Hold UP while powering up** to turn looper mode on (UP) or off (DN), hold both to exit.
+
+## BOSS RC-500 and Wampler Terraform
+
+Each button sends one Program Change on a short press and another on a long press. Change
+the `PROGRAMS` table and `MIDI_CHANNEL` at the top of the sketch to pick your own
+presets. The LED flashes green for a short press and red for a long press, with the number of
+flashes showing the preset's position in its bank of four.
+
+Default mapping (PC 0 = preset 1):
+
+| Button | Short press | Long press |
+|---|---|---|
+| ONE (D2) | preset 2 | preset 6 |
+| TWO (D3) | preset 1 | preset 5 |
+| THREE (D6) | preset 4 | preset 8 |
+| FOUR (D8) | preset 3 | preset 7 |
+
+## Changes from the first version
+
+- Credit and the original BSD licence are now in all three sketches, not just the HX one.
+- HX Stomp: long press on FOUR now toggles all bypass (it could only bypass before, never turn back on).
+- HX Stomp: long press on TAP now enters tuner mode properly, so the LED and the UP/DN buttons
+  know the tuner is on.
+- HX Stomp: leaving the MIDI channel or looper configuration now returns to the mode you were in.
+  Before, it fell back to scroll mode, and leaving looper configuration didn't save properly.
+- HX Stomp: tuner LED blinks steadily instead of flickering when the tuner is first opened.
+- HX Stomp: MIDI CC numbers have names, and unused buttons/libraries (`Wire.h`, extra
+  JC_Button objects) are removed.
+- RC-500 / Terraform: the two identical sketches are rewritten with a single settings table
+  and shared click handlers instead of eight near-identical functions.
+- Uses `setClickMs()` instead of the deprecated `setClickTicks()` in current OneButton.
+
+## License
+
+Copyright © 2026 Jon Solberg
+
+This program is free software: you can redistribute it and/or modify it under the terms of the
+GNU General Public License as published by the Free Software Foundation, either version 3 of the
+License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without
+even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+[GNU General Public License](LICENSE) for more details.
+
+Code from MIDI Muppet HX is Copyright © 2020 Matthias Wientapper, used under the
+[BSD 3-Clause License](LICENSE-midi_muppet.txt).
