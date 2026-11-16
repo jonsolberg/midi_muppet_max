@@ -1,0 +1,791 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MIDI Muppet 4btn editor</title>
+<meta name="description" content="Set up the four button MIDI Muppet foot switch from your browser: actions for every switch, HX Stomp modes, BOSS RC-500 and Wampler Terraform presets.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Crect x='6' y='4' width='36' height='40' rx='6' fill='%23161a22'/%3E%3Ccircle cx='17' cy='14' r='4' fill='%23cfd6e0'/%3E%3Ccircle cx='31' cy='14' r='4' fill='%23cfd6e0'/%3E%3Ccircle cx='17' cy='34' r='4' fill='%23cfd6e0'/%3E%3Ccircle cx='31' cy='34' r='4' fill='%23cfd6e0'/%3E%3Ccircle cx='24' cy='24' r='2' fill='%2348d17a'/%3E%3C/svg%3E">
+<style>
+:root{
+  --bg:#f3f4f8;--card:#fff;--ink:#1b2030;--muted:#5f6878;--line:#dfe3ea;--accent:#d9572b;--accent-ink:#fff;
+  --ok:#1f9d55;--warn:#b7791f;--err:#c53030;--sel:#d9572b;--chip:#eef1f6;--shadow:0 1px 2px rgba(20,25,40,.06),0 6px 20px rgba(20,25,40,.06);
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#10131a;--card:#181c25;--ink:#e8ebf1;--muted:#9aa3b2;--line:#2a303c;--chip:#222836;--shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.25);
+}}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+a{color:var(--accent)}
+header.top{max-width:1180px;margin:0 auto;padding:22px 20px 6px;display:flex;flex-wrap:wrap;gap:12px 20px;align-items:center;justify-content:space-between}
+header.top h1{font-size:1.55rem;margin:0;letter-spacing:-.01em}
+header.top .sub{color:var(--muted);font-size:.92rem}
+.home{font-size:.88rem;color:var(--muted);text-decoration:none}
+.conn{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.status{display:inline-flex;align-items:center;gap:8px;font-size:.9rem;color:var(--muted);background:var(--card);border:1px solid var(--line);border-radius:999px;padding:6px 12px}
+.status i{width:9px;height:9px;border-radius:50%;background:#9aa3b2;display:inline-block}
+.status.on i{background:var(--ok)} .status.busy i{background:var(--warn);animation:pulse 1s infinite} .status.err i{background:var(--err)}
+@keyframes pulse{50%{opacity:.3}}
+button,.btn{font:inherit;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:10px;padding:8px 14px;cursor:pointer;display:inline-flex;align-items:center;gap:8px;text-decoration:none}
+button:hover:not(:disabled),.btn:hover{border-color:var(--muted)}
+button.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600}
+button:disabled{opacity:.45;cursor:not-allowed}
+main{max-width:1180px;margin:0 auto;padding:10px 20px 40px;display:grid;grid-template-columns:minmax(300px,380px) 1fr;gap:20px}
+@media (max-width:860px){main{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);padding:18px}
+.card h2{font-size:1.08rem;margin:0 0 12px}
+.card h3{font-size:.95rem;margin:16px 0 8px}
+.notice{margin:0 auto 4px;max-width:1140px;border-radius:12px;padding:10px 14px;font-size:.92rem;display:none}
+.notice.show{display:block}
+.notice.warn{background:#fff5e0;color:#6b4a0c;border:1px solid #f0d49a}
+@media (prefers-color-scheme:dark){.notice.warn{background:#2c2413;color:#f0d49a;border-color:#5a4718}}
+.wrapn{max-width:1180px;margin:0 auto;padding:0 20px}
+/* pedal */
+.pedal-wrap{position:sticky;top:12px}
+svg.pedal{width:100%;max-width:340px;display:block;margin:0 auto}
+.sw{cursor:pointer}
+.sw .ring{fill:none;stroke:transparent;stroke-width:5}
+.sw.sel .ring{stroke:var(--sel)}
+.sw.live .cap{fill:#ffd36b}
+.sw .num{font:700 20px system-ui;fill:#fff;text-anchor:middle;pointer-events:none}
+.sw text.lbl{font:600 12.5px system-ui;fill:#cfd6e0;text-anchor:middle;pointer-events:none}
+.sw text.lbl2{font:500 11px system-ui;fill:#8f9aab;text-anchor:middle;pointer-events:none}
+.legend{list-style:none;margin:14px 0 0;padding:0;display:grid;gap:6px}
+.legend li{display:grid;grid-template-columns:28px 1fr;gap:8px;align-items:start;padding:8px 10px;border-radius:10px;cursor:pointer;border:1px solid transparent}
+.legend li.sel{border-color:var(--sel);background:var(--chip)}
+.legend li.live{background:#ffd36b33}
+.legend b.n{display:inline-grid;place-items:center;width:26px;height:26px;border-radius:50%;background:#20252f;color:#fff;font-size:.85rem}
+.legend small{display:block;color:var(--muted);line-height:1.35}
+.hint{color:var(--muted);font-size:.86rem;margin:6px 0 0}
+/* forms */
+.row{display:grid;grid-template-columns:150px 1fr;gap:8px 12px;align-items:center;margin:8px 0}
+@media (max-width:520px){.row{grid-template-columns:1fr}}
+.row label{color:var(--muted);font-size:.9rem}
+select,input[type=number],input[type=text]{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:9px;padding:7px 9px;width:100%}
+input[type=number]{max-width:110px}
+input[type=range]{width:100%;accent-color:var(--accent)}
+.fields{display:flex;flex-wrap:wrap;gap:10px 16px}
+.fields .f{display:flex;flex-direction:column;gap:3px;min-width:120px}
+.fields .f span{font-size:.8rem;color:var(--muted)}
+.press{border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin:10px 0}
+.press h3{margin:0 0 8px;display:flex;justify-content:space-between;align-items:center;gap:10px}
+.press.disabled{opacity:.55}
+.tag{font-size:.75rem;font-weight:600;color:var(--muted);background:var(--chip);border-radius:999px;padding:2px 9px}
+.toolbar{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media (max-width:1050px){.grid2{grid-template-columns:1fr}}
+.msg{font-size:.9rem;margin-top:8px;min-height:1.3em}
+.msg.ok{color:var(--ok)} .msg.err{color:var(--err)}
+progress{width:100%;height:10px;accent-color:var(--accent)}
+.hxinfo{background:var(--chip);border-radius:12px;padding:12px 14px;font-size:.92rem}
+.hxinfo table{border-collapse:collapse;width:100%;font-size:.88rem;margin-top:6px}
+.hxinfo td{padding:3px 6px;border-top:1px solid var(--line);vertical-align:top}
+.hxinfo td:first-child{color:var(--muted);white-space:nowrap}
+details{margin-top:6px} summary{cursor:pointer;color:var(--muted)}
+footer{max-width:1180px;margin:0 auto;padding:10px 20px 40px;color:var(--muted);font-size:.85rem}
+.dirty{color:var(--warn);font-size:.85rem;font-weight:600}
+kbd{font:600 .8rem ui-monospace,monospace;background:var(--chip);border:1px solid var(--line);border-radius:5px;padding:0 5px}
+</style>
+</head>
+<body>
+<header class="top">
+  <div>
+    <a class="home" href="/">← jonsolberg.se</a>
+    <h1>MIDI Muppet 4btn editor</h1>
+    <div class="sub">Set up your four button MIDI foot switch over USB – no Arduino IDE needed.</div>
+  </div>
+  <div class="conn">
+    <span class="status" id="status"><i></i><span id="statusText">Not connected</span></span>
+    <button class="primary" id="btnConnect">Connect pedal</button>
+    <button id="btnDisconnect" hidden>Disconnect</button>
+  </div>
+</header>
+<div class="wrapn"><div class="notice warn" id="noSerial">Connecting to the pedal needs <b>Chrome, Edge or Opera on a computer</b> (Web Serial). You can still plan a setup here and export it to a file.</div></div>
+
+<main>
+  <section class="pedal-wrap">
+    <div class="card">
+      <svg class="pedal" id="pedal" viewBox="0 0 300 450" role="img" aria-label="The MIDI Muppet seen from above. Click a switch to edit it."></svg>
+      <ul class="legend" id="legend"></ul>
+      <p class="hint" id="liveHint">Connected: press a switch on the pedal and it lights up here.</p>
+    </div>
+  </section>
+
+  <section style="display:grid;gap:20px;align-content:start">
+    <div class="card" id="buttonCard">
+      <h2 id="btnTitle">Switch 1</h2>
+      <div id="btnBody"></div>
+    </div>
+
+    <div class="grid2">
+      <div class="card">
+        <h2>Pedal setup</h2>
+        <div class="row"><label for="profile">Profile</label>
+          <select id="profile">
+            <option value="0">Generic</option>
+            <option value="1">HX Stomp modes</option>
+          </select><div class="hint" style="grid-column:2" id="profileHint"></div></div>
+        <div class="row"><label for="channel">MIDI channel</label>
+          <select id="channel"></select></div>
+        <div class="row"><label for="longMs">Long press</label>
+          <div><input type="range" id="longMs" min="200" max="2000" step="50"><div class="hint" id="longMsVal"></div></div></div>
+        <div class="row"><label for="ledFeedback">LED</label>
+          <label style="color:var(--ink)"><input type="checkbox" id="ledFeedback"> Flash when a switch sends something</label></div>
+        <div class="row"><label for="red">Red LED brightness</label>
+          <div><input type="range" id="red" min="1" max="255"><div class="hint">Many bicolor LEDs are much brighter in red – turn it down if it dazzles.</div></div></div>
+        <div class="row" id="looperRow"><label for="looper">HX looper mode</label>
+          <label style="color:var(--ink)"><input type="checkbox" id="looper"> Include the looper when switching modes</label></div>
+        <h3>Start from a ready-made setup</h3>
+        <div class="toolbar">
+          <select id="template" style="max-width:340px">
+            <option value="">Choose…</option>
+            <option value="hx">HX Stomp – MIDI Muppet HX (up/down, tap, tuner, bypass)</option>
+            <option value="hx4">HX Stomp – snapshots and footswitches</option>
+            <option value="rc500">BOSS RC-500 – 8 memories</option>
+            <option value="rc500nav">BOSS RC-500 – memory up / down</option>
+            <option value="terraform">Wampler Terraform – 8 presets</option>
+            <option value="terraformnav">Wampler Terraform – preset up / down</option>
+            <option value="empty">Empty</option>
+          </select>
+          <button id="btnTemplate">Use</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Pedal</h2>
+        <div id="pedalInfo" class="hint">Not connected.</div>
+        <div class="toolbar" style="margin-top:12px">
+          <button class="primary" id="btnSave" disabled>Save to pedal</button>
+          <button id="btnRead" disabled>Read from pedal</button>
+          <button id="btnLed" disabled>Blink LED</button>
+        </div>
+        <div class="msg" id="pedalMsg"></div>
+        <span class="dirty" id="dirty" hidden>● Changes not saved to the pedal</span>
+        <h3>File</h3>
+        <div class="toolbar">
+          <button id="btnExport">Export setup</button>
+          <button id="btnImport">Import setup</button>
+          <input type="file" id="importFile" accept=".json,application/json" hidden>
+        </div>
+        <h3>Firmware</h3>
+        <p class="hint" style="margin-top:0">The editor needs the MIDI Muppet config firmware on the Arduino. Install it once – it works for Arduino Nano and Pro Mini with ATmega168 or ATmega328P.</p>
+        <div class="toolbar"><button id="btnFlash">Install firmware</button></div>
+        <progress id="flashProgress" value="0" max="100" hidden></progress>
+        <div class="msg" id="flashMsg"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>How it works</h2>
+      <ol style="margin:0;padding-left:20px">
+        <li>Connect the Arduino in the pedal to the computer with a USB cable.</li>
+        <li>First time: click <b>Install firmware</b> and pick the Arduino's port. Your old sketch is replaced.</li>
+        <li>Click <b>Connect pedal</b>. The pedal restarts and blinks green/red while it is in setup mode.</li>
+        <li>Click a switch in the picture, choose what a short and a long press should do, then <b>Save to pedal</b>.</li>
+        <li>Disconnect, plug in the MIDI cable and play. Settings stay on the pedal.</li>
+      </ol>
+      <details><summary>Details for the curious</summary>
+        <p class="hint">After power-up the firmware listens on USB for 1.5 seconds before it starts as a foot switch, so it doesn't send anything to your other pedals while it listens. A switch without a long press action reacts as soon as you step on it; with a long press action, the short press is sent when you lift your foot. In the HX Stomp profile, switches 1 and 2 work exactly like the original MIDI Muppet HX: scroll, footswitch, snapshot, looper and tuner modes, and holding both switches changes mode.</p>
+        <p class="hint">Wiring: switches on D2, D3, D6, D8 to ground; bicolor LED green on D4, red on D5; MIDI out on TX. See the <a href="https://github.com/jonsolberg/midi_muppet_multi_4btn">project on GitHub</a>.</p>
+      </details>
+    </div>
+  </section>
+</main>
+<footer>
+  MIDI Muppet 4btn by Jon Solberg, based on <a href="https://github.com/mattzzw/midi_muppet_hx_2btn">MIDI Muppet HX</a> by Matthias Wientapper.
+  Free software under GPL v3 · <a href="https://github.com/jonsolberg/midi_muppet_multi_4btn">Source on GitHub</a>
+</footer>
+
+<script>
+'use strict';
+/* MIDI Muppet 4btn editor
+ * Copyright (C) 2026 Jon Solberg – GPL v3 or later.
+ * Talks to midi_muppet_4btn_config firmware over Web Serial and installs it with the STK500 protocol.
+ */
+
+// ------------------------------------------------------------ config format (matches the firmware)
+const CFG_SIZE = 53, CFG_VERSION = 1;
+const T = {NONE:0, PC:1, CC:2, TOGGLE:3, MOMENTARY:4, NEXT:5, PREV:6, HXTUNER:7};
+const FLAG_LED = 1, FLAG_LOOPER = 2;
+const POS_NAMES = ['Top left', 'Top right', 'Bottom left', 'Bottom right'];
+const PINS = ['D2', 'D3', 'D6', 'D8'];
+
+const act = (type, ch = 0, a = 0, b = 0, c = 0) => ({type, ch, a, b, c});
+
+function defaultConfig() {
+  const progs = [[1, 5], [0, 4], [3, 7], [2, 6]];
+  return {profile: 0, channel: 0, ledFeedback: true, looper: true, red: 64, longMs: 800, pos: [0, 1, 2, 3],
+          actions: progs.flatMap(([s, l]) => [act(T.PC, 0, s), act(T.PC, 0, l)])};
+}
+
+function encode(c) {
+  const b = new Uint8Array(CFG_SIZE);
+  b[0] = 77; b[1] = 52; b[2] = CFG_VERSION;
+  b[3] = c.profile; b[4] = c.channel;
+  b[5] = (c.ledFeedback ? FLAG_LED : 0) | (c.looper ? FLAG_LOOPER : 0);
+  b[6] = c.red; b[7] = Math.round(c.longMs / 10);
+  c.pos.forEach((p, i) => b[8 + i] = p);
+  c.actions.forEach((x, i) => b.set([x.type, x.ch, x.a, x.b, x.c], 12 + i * 5));
+  let s = 0x5A; for (let i = 0; i < 52; i++) s += b[i];
+  b[52] = s & 255;
+  return b;
+}
+
+function decode(b) {
+  if (b.length !== CFG_SIZE || b[0] !== 77 || b[1] !== 52) throw new Error('not a MIDI Muppet setup');
+  if (b[2] !== CFG_VERSION) throw new Error('setup version ' + b[2] + ' is not supported');
+  const actions = [];
+  for (let i = 0; i < 8; i++) { const o = 12 + i * 5; actions.push(act(b[o], b[o + 1], b[o + 2], b[o + 3], b[o + 4])); }
+  return {profile: b[3], channel: b[4], ledFeedback: !!(b[5] & FLAG_LED), looper: !!(b[5] & FLAG_LOOPER),
+          red: b[6], longMs: b[7] * 10, pos: [b[8], b[9], b[10], b[11]], actions};
+}
+
+const hex = b => Array.from(b, x => x.toString(16).padStart(2, '0')).join('').toUpperCase();
+const unhex = h => new Uint8Array(h.match(/../g).map(x => parseInt(x, 16)));
+
+// ------------------------------------------------------------ action catalogue
+// Each choice turns an action into editable fields and back. Pedal presets come first when they match.
+const num = (key, label, min, max, def, offset = 0) => ({key, label, min, max, def, offset});
+const CHOICES = [
+  // HX Stomp
+  {id: 'hx-tap', group: 'Line 6 HX Stomp', label: 'Tap tempo', make: () => act(T.CC, 0, 64, 127)},
+  {id: 'hx-tuner', group: 'Line 6 HX Stomp', label: 'Tuner on/off', make: () => act(T.HXTUNER)},
+  {id: 'hx-pup', group: 'Line 6 HX Stomp', label: 'Next preset', make: () => act(T.CC, 0, 72, 127)},
+  {id: 'hx-pdn', group: 'Line 6 HX Stomp', label: 'Previous preset', make: () => act(T.CC, 0, 72, 0)},
+  {id: 'hx-snext', group: 'Line 6 HX Stomp', label: 'Next snapshot', make: () => act(T.CC, 0, 69, 8)},
+  {id: 'hx-sprev', group: 'Line 6 HX Stomp', label: 'Previous snapshot', make: () => act(T.CC, 0, 69, 9)},
+  {id: 'hx-snap', group: 'Line 6 HX Stomp', label: 'Snapshot…', fields: [num('b', 'Snapshot', 1, 8, 1, -1)], make: f => act(T.CC, 0, 69, f.b)},
+  {id: 'hx-fs', group: 'Line 6 HX Stomp', label: 'Footswitch FS1–FS5…', fields: [num('a', 'Footswitch', 1, 5, 4, 48)], match: x => x.type === T.CC && x.a >= 49 && x.a <= 53 && x.b === 127, make: f => act(T.CC, 0, f.a, 127)},
+  {id: 'hx-bypass', group: 'Line 6 HX Stomp', label: 'All bypass on/off', make: () => act(T.TOGGLE, 0, 70, 0, 127)},
+  {id: 'hx-lrec', group: 'Line 6 HX Stomp', label: 'Looper record', make: () => act(T.CC, 0, 60, 127)},
+  {id: 'hx-lodub', group: 'Line 6 HX Stomp', label: 'Looper overdub', make: () => act(T.CC, 0, 60, 0)},
+  {id: 'hx-lplay', group: 'Line 6 HX Stomp', label: 'Looper play', make: () => act(T.CC, 0, 61, 127)},
+  {id: 'hx-lstop', group: 'Line 6 HX Stomp', label: 'Looper stop', make: () => act(T.CC, 0, 61, 0)},
+  {id: 'hx-lundo', group: 'Line 6 HX Stomp', label: 'Looper undo/redo', make: () => act(T.CC, 0, 63, 127)},
+  {id: 'hx-mode-stomp', group: 'Line 6 HX Stomp', label: 'Footswitch mode: stomp', make: () => act(T.CC, 0, 71, 0)},
+  {id: 'hx-mode-snap', group: 'Line 6 HX Stomp', label: 'Footswitch mode: snapshot', make: () => act(T.CC, 0, 71, 3)},
+  // BOSS RC-500
+  {id: 'rc-mem', group: 'BOSS RC-500', label: 'Memory…', fields: [num('a', 'Memory', 1, 99, 1, -1)], make: f => act(T.PC, 0, f.a), match: x => x.type === T.PC && x.a <= 98, pedal: 'rc500'},
+  {id: 'rc-next', group: 'BOSS RC-500', label: 'Next memory', make: () => act(T.NEXT, 0, 0, 98), pedal: 'rc500'},
+  {id: 'rc-prev', group: 'BOSS RC-500', label: 'Previous memory', make: () => act(T.PREV, 0, 0, 98), pedal: 'rc500'},
+  // Wampler Terraform
+  {id: 'tf-pre', group: 'Wampler Terraform', label: 'Preset…', fields: [num('a', 'Preset', 1, 128, 1, -1)], make: f => act(T.PC, 0, f.a), match: x => x.type === T.PC, pedal: 'terraform'},
+  {id: 'tf-next', group: 'Wampler Terraform', label: 'Next preset', make: () => act(T.NEXT, 0, 0, 127), pedal: 'terraform'},
+  {id: 'tf-prev', group: 'Wampler Terraform', label: 'Previous preset', make: () => act(T.PREV, 0, 0, 127), pedal: 'terraform'},
+  // Generic MIDI
+  {id: 'none', group: 'Any MIDI device', label: 'Nothing', make: () => act(T.NONE)},
+  {id: 'pc', group: 'Any MIDI device', label: 'Program Change', generic: T.PC, fields: [num('a', 'Program (0–127)', 0, 127, 0)]},
+  {id: 'cc', group: 'Any MIDI device', label: 'Control Change', generic: T.CC, fields: [num('a', 'Controller', 0, 127, 0), num('b', 'Value', 0, 127, 127)]},
+  {id: 'toggle', group: 'Any MIDI device', label: 'CC toggle (on/off)', generic: T.TOGGLE, fields: [num('a', 'Controller', 0, 127, 0), num('b', '1st press value', 0, 127, 127), num('c', '2nd press value', 0, 127, 0)]},
+  {id: 'momentary', group: 'Any MIDI device', label: 'CC momentary (while held)', generic: T.MOMENTARY, shortOnly: true, fields: [num('a', 'Controller', 0, 127, 0), num('b', 'Value when pressed', 0, 127, 127), num('c', 'Value when released', 0, 127, 0)]},
+  {id: 'next', group: 'Any MIDI device', label: 'Next program', generic: T.NEXT, fields: [num('a', 'From program', 0, 127, 0), num('b', 'To program', 0, 127, 7)]},
+  {id: 'prev', group: 'Any MIDI device', label: 'Previous program', generic: T.PREV, fields: [num('a', 'From program', 0, 127, 0), num('b', 'To program', 0, 127, 7)]},
+];
+for (const ch of CHOICES) {
+  if (ch.generic !== undefined) ch.make = f => act(ch.generic, 0, f.a ?? 0, f.b ?? 0, f.c ?? 0);
+  if (!ch.match) {
+    if (ch.generic !== undefined) ch.match = x => x.type === ch.generic;
+    else if (!ch.fields) { const t = ch.make(); ch.match = x => x.type === t.type && x.a === t.a && x.b === t.b && x.c === t.c; }
+    else { const k = ch.fields[0].key, t = ch.make({[k]: 0}); ch.match = x => x.type === t.type && ['a', 'b', 'c'].filter(q => q !== k).every(q => x[q] === t[q]); }
+  }
+}
+const CH_BY_ID = Object.fromEntries(CHOICES.map(c => [c.id, c]));
+
+// Pick the best choice for an action, preferring the pedal the user works with
+function choiceFor(x, slot) {
+  const pref = state.pedalHint;
+  const fits = CHOICES.filter(c => c.match(x) && !(c.shortOnly && slot % 2));
+  return fits.find(c => c.pedal && c.pedal === pref) || fits.find(c => !c.pedal && !c.generic && c.id !== 'none' && c.group !== 'Any MIDI device') ||
+         fits.find(c => !c.pedal) || fits[0] || CH_BY_ID.none;
+}
+
+function describe(x, slot) {
+  if (state.cfg.profile === 1 && slot < 4) return '';
+  if (x.type === T.NONE) return 'Nothing';
+  const c = choiceFor(x, slot);
+  let d = c.label.replace('…', '');
+  if (c.fields) d += ' ' + c.fields.map(f => x[f.key] - f.offset).join('/');
+  if (c.id === 'pc') d = 'PC ' + x.a;
+  if (c.id === 'cc') d = 'CC ' + x.a + ' = ' + x.b;
+  if (c.id === 'toggle') d = 'CC ' + x.a + ' toggle ' + x.b + '/' + x.c;
+  if (c.id === 'momentary') d = 'CC ' + x.a + ' held ' + x.b + '/' + x.c;
+  if (c.id === 'next' || c.id === 'prev') d = c.label + ' ' + x.a + '–' + x.b;
+  if (x.ch) d += ' · ch ' + x.ch;
+  return d;
+}
+
+// ------------------------------------------------------------ templates
+const TEMPLATES = {
+  hx: () => ({...defaultConfig(), profile: 1, actions: [act(0), act(0), act(0), act(0),
+      act(T.CC, 0, 64, 127), act(T.HXTUNER), act(T.TOGGLE, 0, 6, 127, 0), act(T.TOGGLE, 0, 70, 0, 127)], hint: 'hx'}),
+  hx4: () => ({...defaultConfig(), profile: 0, actions: [act(T.CC, 0, 69, 9), act(T.HXTUNER), act(T.CC, 0, 69, 8), act(T.CC, 0, 64, 127),
+      act(T.CC, 0, 52, 127), act(T.CC, 0, 72, 0), act(T.CC, 0, 53, 127), act(T.CC, 0, 72, 127)], hint: 'hx'}),
+  rc500: () => ({...defaultConfig(), hint: 'rc500'}),
+  rc500nav: () => ({...defaultConfig(), actions: [act(T.PREV, 0, 0, 98), act(0), act(T.NEXT, 0, 0, 98), act(0),
+      act(T.PC, 0, 0), act(0), act(T.PC, 0, 1), act(0)], hint: 'rc500'}),
+  terraform: () => ({...defaultConfig(), hint: 'terraform'}),
+  terraformnav: () => ({...defaultConfig(), actions: [act(T.PREV, 0, 0, 127), act(0), act(T.NEXT, 0, 0, 127), act(0),
+      act(T.PC, 0, 0), act(0), act(T.PC, 0, 1), act(0)], hint: 'terraform'}),
+  empty: () => ({...defaultConfig(), actions: Array.from({length: 8}, () => act(0))}),
+};
+
+// ------------------------------------------------------------ state + UI
+const state = {cfg: defaultConfig(), sel: 0, dirty: false, pedalHint: null, live: new Set()};
+const $ = id => document.getElementById(id);
+
+function setDirty(d) { state.dirty = d; $('dirty').hidden = !d || !pedal.connected; }
+function changed() { setDirty(true); renderPedal(); }
+
+const SWITCH_XY = [[84, 84], [216, 84], [84, 316], [216, 316]];
+
+function renderPedal() {
+  const c = state.cfg;
+  let s = `<defs><linearGradient id="enc" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2a2f39"/><stop offset="1" stop-color="#14171d"/></linearGradient>
+    <radialGradient id="cap" cx=".35" cy=".3" r=".8"><stop offset="0" stop-color="#ffffff"/><stop offset=".5" stop-color="#c7ced8"/><stop offset="1" stop-color="#7d8794"/></radialGradient></defs>
+    <rect x="10" y="10" width="280" height="430" rx="26" fill="url(#enc)" stroke="#0b0d11" stroke-width="2"/>`;
+  // LED
+  s += `<circle cx="150" cy="215" r="11" fill="#9aa3ad"/><circle cx="150" cy="215" r="6.5" fill="${pedal.connected ? '#48d17a' : '#e7ecef'}" id="ledDot"/>`;
+  for (let b = 0; b < 4; b++) {
+    const [x, y] = SWITCH_XY[c.pos[b]];
+    const hx = c.profile === 1 && b < 2;
+    const l1 = hx ? (b === 0 ? 'UP' : 'DN') + ' · HX modes' : short(describe(c.actions[b * 2], b * 2));
+    const l2 = hx ? '' : (c.actions[b * 2].type === T.MOMENTARY ? 'held' : 'long: ' + short(describe(c.actions[b * 2 + 1], b * 2 + 1)));
+    const ly = y + 56;
+    s += `<g class="sw${state.sel === b ? ' sel' : ''}${state.live.has(b) ? ' live' : ''}" data-b="${b}" tabindex="0" role="button" aria-label="Switch ${b + 1}">
+      <circle class="ring" cx="${x}" cy="${y}" r="40"/>
+      <circle cx="${x}" cy="${y}" r="30" fill="#b9c1cc" stroke="#6b7480" stroke-width="2"/>
+      <polygon points="${hexPts(x, y, 25)}" fill="#a3acb8" stroke="#6b7480"/>
+      <circle class="cap" cx="${x}" cy="${y}" r="18" fill="url(#cap)" stroke="#5c6570"/>
+      <text class="num" x="${x}" y="${y + 7}" fill="#1b2030" style="fill:#1b2030">${b + 1}</text>
+      <text class="lbl" x="${x}" y="${ly}">${esc(l1)}</text>
+      <text class="lbl2" x="${x}" y="${ly + 15}">${esc(l2)}</text></g>`;
+  }
+  $('pedal').innerHTML = s;
+  $('pedal').querySelectorAll('.sw').forEach(g => {
+    g.onclick = () => select(+g.dataset.b);
+    g.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); select(+g.dataset.b); } };
+  });
+  // legend
+  $('legend').innerHTML = [0, 1, 2, 3].map(b => {
+    const hx = c.profile === 1 && b < 2;
+    const t = hx ? (b === 0 ? 'UP – HX Stomp modes' : 'DN – HX Stomp modes') :
+      describe(c.actions[b * 2], b * 2) + (c.actions[b * 2].type === T.MOMENTARY ? '' : ' · long: ' + describe(c.actions[b * 2 + 1], b * 2 + 1));
+    return `<li data-b="${b}" class="${state.sel === b ? 'sel' : ''}${state.live.has(b) ? ' live' : ''}"><b class="n">${b + 1}</b><span>${esc(t)}<small>${POS_NAMES[c.pos[b]]} · pin ${PINS[b]}</small></span></li>`;
+  }).join('');
+  $('legend').querySelectorAll('li').forEach(li => li.onclick = () => select(+li.dataset.b));
+}
+
+const hexPts = (x, y, r) => Array.from({length: 6}, (_, i) => { const a = Math.PI / 6 + i * Math.PI / 3; return (x + r * Math.cos(a)).toFixed(1) + ',' + (y + r * Math.sin(a)).toFixed(1); }).join(' ');
+const short = t => t.length > 19 ? t.slice(0, 18) + '…' : t;
+const esc = t => String(t).replace(/[&<>"]/g, m => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[m]));
+
+function select(b) { state.sel = b; renderPedal(); renderButton(); }
+
+function renderButton() {
+  const b = state.sel, c = state.cfg;
+  $('btnTitle').textContent = `Switch ${b + 1}`;
+  const body = $('btnBody');
+  let h = `<div class="row"><label for="pos">Place on the pedal</label><select id="pos">${POS_NAMES.map((n, i) => `<option value="${i}"${c.pos[b] === i ? ' selected' : ''}>${n}</option>`).join('')}</select></div>`;
+  if (c.profile === 1 && b < 2) {
+    h += `<div class="hxinfo"><b>${b === 0 ? 'UP' : 'DN'}</b> works like the original MIDI Muppet HX in the HX Stomp profile:
+      <table>
+      <tr><td>Scroll mode</td><td>${b === 0 ? 'next' : 'previous'} preset${b === 1 ? ' · long press: tuner' : ' · long press: snapshot mode'}</td></tr>
+      <tr><td>Footswitch mode</td><td>${b === 0 ? 'FS5' : 'FS4'}${b === 1 ? ' · long press: tuner' : ' · long press: snapshot mode'}</td></tr>
+      <tr><td>Snapshot mode</td><td>${b === 0 ? 'next' : 'previous'} snapshot${b === 1 ? ' · long press: tuner' : ' · long press: back to scroll/footswitch mode'}</td></tr>
+      <tr><td>Looper mode</td><td>${b === 0 ? 'play / stop · long press: undo/redo' : 'record / overdub (on press)'}</td></tr>
+      <tr><td>Tuner</td><td>any switch closes it</td></tr>
+      <tr><td>Hold UP + DN</td><td>scroll → footswitch → looper → scroll</td></tr>
+      </table>
+      <p class="hint">LED: red = scroll, green = footswitch/snapshot, blinking green = tuner, looper: green play, red record, yellow overdub.</p></div>`;
+    body.innerHTML = h;
+  } else {
+    const momentary = c.actions[b * 2].type === T.MOMENTARY;
+    const noLong = c.actions[b * 2 + 1].type === T.NONE;
+    h += pressEditor(b * 2, 'Short press', momentary ? 'while held' : (noLong ? 'acts on press' : 'acts when released'));
+    h += pressEditor(b * 2 + 1, 'Long press', momentary ? 'not used with momentary' : `hold ${c.longMs} ms`, momentary);
+    body.innerHTML = h;
+    for (const slot of [b * 2, b * 2 + 1]) wirePress(slot);
+  }
+  $('pos').onchange = e => {
+    const p = +e.target.value, other = c.pos.indexOf(p);
+    if (other >= 0) c.pos[other] = c.pos[b];
+    c.pos[b] = p; changed(); renderButton();
+  };
+}
+
+function pressEditor(slot, title, tag, disabled) {
+  const x = state.cfg.actions[slot], ch = choiceFor(x, slot);
+  const groups = [...new Set(CHOICES.map(c => c.group))];
+  const opts = groups.map(g => `<optgroup label="${g}">` + CHOICES.filter(c => c.group === g && !(c.shortOnly && slot % 2))
+    .map(c => `<option value="${c.id}"${c === ch ? ' selected' : ''}>${c.label}</option>`).join('') + '</optgroup>').join('');
+  let fields = '';
+  if (ch.fields) fields = ch.fields.map(f => `<label class="f"><span>${f.label}</span><input type="number" data-k="${f.key}" data-o="${f.offset}" min="${f.min}" max="${f.max}" value="${x[f.key] - f.offset}"></label>`).join('');
+  const chans = `<label class="f"><span>MIDI channel</span><select data-ch>${['<option value="0">Pedal setting</option>', ...Array.from({length: 16}, (_, i) => `<option value="${i + 1}"${x.ch === i + 1 ? ' selected' : ''}>${i + 1}</option>`)].join('')}</select></label>`;
+  return `<div class="press${disabled ? ' disabled' : ''}" data-slot="${slot}"><h3>${title} <span class="tag">${tag}</span></h3>
+    <div class="row"><label>Action</label><select data-choice${disabled ? ' disabled' : ''}>${opts}</select></div>
+    ${x.type !== T.NONE && !disabled ? `<div class="fields">${fields}${chans}</div>` : ''}</div>`;
+}
+
+function wirePress(slot) {
+  const el = document.querySelector(`.press[data-slot="${slot}"]`);
+  const x = state.cfg.actions[slot];
+  el.querySelector('[data-choice]').onchange = e => {
+    const c = CH_BY_ID[e.target.value];
+    const f = {}; (c.fields || []).forEach(d => f[d.key] = d.def + d.offset);
+    if (c.pedal) state.pedalHint = c.pedal;
+    const n = c.make(f); n.ch = x.ch;
+    state.cfg.actions[slot] = n;
+    changed(); renderButton();
+  };
+  el.querySelectorAll('input[data-k]').forEach(inp => inp.onchange = () => {
+    const min = +inp.min, max = +inp.max;
+    let v = Math.round(+inp.value); if (isNaN(v)) v = min; v = Math.max(min, Math.min(max, v)); inp.value = v;
+    x[inp.dataset.k] = v + +inp.dataset.o; changed();
+  });
+  const chs = el.querySelector('[data-ch]'); if (chs) chs.onchange = () => { x.ch = +chs.value; changed(); };
+}
+
+function renderSettings() {
+  const c = state.cfg;
+  $('profile').value = c.profile;
+  $('channel').innerHTML = Array.from({length: 16}, (_, i) => `<option value="${i}"${c.channel === i ? ' selected' : ''}>${i + 1}</option>`).join('');
+  $('longMs').value = c.longMs; $('longMsVal').textContent = (c.longMs / 1000).toFixed(2).replace(/0$/, '') + ' s';
+  $('ledFeedback').checked = c.ledFeedback; $('red').value = c.red; $('looper').checked = c.looper;
+  $('looperRow').style.display = c.profile === 1 ? '' : 'none';
+  $('profileHint').textContent = c.profile === 1 ? 'Switches 1 and 2 are UP and DN of the original MIDI Muppet HX; 3 and 4 have their own actions.' : 'Every switch has its own short and long press actions.';
+}
+
+function renderAll() { renderSettings(); renderPedal(); renderButton(); }
+
+$('profile').onchange = e => { state.cfg.profile = +e.target.value; if (state.cfg.profile === 1) state.pedalHint = 'hx'; changed(); renderAll(); };
+$('channel').onchange = e => { state.cfg.channel = +e.target.value; changed(); };
+$('longMs').oninput = e => { state.cfg.longMs = +e.target.value; renderSettings(); changed(); renderButton(); };
+$('ledFeedback').onchange = e => { state.cfg.ledFeedback = e.target.checked; changed(); };
+$('red').onchange = e => { state.cfg.red = +e.target.value; changed(); };
+$('looper').onchange = e => { state.cfg.looper = e.target.checked; changed(); };
+$('btnTemplate').onclick = () => {
+  const t = $('template').value; if (!t) return;
+  const n = TEMPLATES[t](); state.pedalHint = n.hint || null; delete n.hint;
+  n.channel = state.cfg.channel; n.pos = state.cfg.pos.slice();
+  state.cfg = n; changed(); renderAll();
+};
+
+// ------------------------------------------------------------ file import / export
+$('btnExport').onclick = () => {
+  const data = {format: 'midi-muppet-4btn', version: CFG_VERSION, setup: hex(encode(state.cfg)), pedalHint: state.pedalHint, readable: state.cfg};
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(data, null, 1)], {type: 'application/json'}));
+  a.download = 'midi-muppet-setup.json'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+};
+$('btnImport').onclick = () => $('importFile').click();
+$('importFile').onchange = async e => {
+  const f = e.target.files[0]; if (!f) return;
+  try {
+    const d = JSON.parse(await f.text());
+    if (d.format !== 'midi-muppet-4btn') throw new Error('not a MIDI Muppet setup file');
+    state.cfg = decode(unhex(d.setup)); state.pedalHint = d.pedalHint || null;
+    changed(); renderAll(); msg('pedalMsg', 'Setup imported. Save it to the pedal to use it.', 'ok');
+  } catch (err) { msg('pedalMsg', 'Could not import: ' + err.message, 'err'); }
+  e.target.value = '';
+};
+
+function msg(id, text, kind) { const m = $(id); m.textContent = text; m.className = 'msg' + (kind ? ' ' + kind : ''); }
+function status(text, kind) { $('statusText').textContent = text; $('status').className = 'status' + (kind ? ' ' + kind : ''); }
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+// ------------------------------------------------------------ serial: setup protocol
+const pedal = {
+  port: null, reader: null, writer: null, connected: false, lines: [], waiters: [], buf: '', info: null,
+
+  async open(port, baud) {
+    this.port = port;
+    await port.open({baudRate: baud, bufferSize: 4096});
+    this.writer = port.writable.getWriter();
+    this.reading = this.readLoop();
+  },
+
+  async readLoop() {
+    this.reader = this.port.readable.getReader();
+    const dec = new TextDecoder();
+    try {
+      for (;;) {
+        const {value, done} = await this.reader.read();
+        if (done) break;
+        this.buf += dec.decode(value, {stream: true});
+        let i;
+        while ((i = this.buf.indexOf('\n')) >= 0) {
+          const line = this.buf.slice(0, i).replace(/\r$/, ''); this.buf = this.buf.slice(i + 1);
+          this.onLine(line);
+        }
+      }
+    } catch (e) { /* port closed or unplugged */ }
+    finally { try { this.reader.releaseLock(); } catch (e) {} }
+    if (this.connected) lost();
+  },
+
+  onLine(line) {
+    const m = line.match(/^P ([1-4]) ([01])$/);
+    if (m) { buttonEvent(+m[1] - 1, m[2] === '1'); return; }
+    const w = this.waiters.findIndex(w => w.test(line));
+    if (w >= 0) { const [x] = this.waiters.splice(w, 1); clearTimeout(x.timer); x.resolve(line); }
+  },
+
+  send(text) { return this.writer.write(new TextEncoder().encode(text + '\n')); },
+
+  waitFor(test, ms) {
+    return new Promise((resolve, reject) => {
+      const w = {test, resolve, timer: setTimeout(() => { this.waiters.splice(this.waiters.indexOf(w), 1); reject(new Error('timeout')); }, ms)};
+      this.waiters.push(w);
+    });
+  },
+
+  async request(cmd, test, ms = 1500) { const p = this.waitFor(test, ms); await this.send(cmd); return p; },
+
+  async close() {
+    this.connected = false;
+    try { await this.reader?.cancel(); } catch (e) {}
+    try { await this.reading; } catch (e) {}
+    try { this.writer?.releaseLock(); } catch (e) {}
+    try { await this.port?.close(); } catch (e) {}
+    this.reader = this.writer = null; this.buf = ''; this.waiters = [];
+  },
+};
+
+async function resetBoard(port) {
+  // Pulse DTR/RTS: restarts an Arduino Nano / Pro Mini with auto-reset
+  try {
+    await port.setSignals({dataTerminalReady: false, requestToSend: false});
+    await sleep(120);
+    await port.setSignals({dataTerminalReady: true, requestToSend: true});
+  } catch (e) {}
+}
+
+async function choosePort() {
+  if (pedal.port) return pedal.port;
+  return navigator.serial.requestPort();
+}
+
+async function connect() {
+  let port;
+  try { port = await choosePort(); } catch (e) { return; }   // user cancelled
+  $('btnConnect').disabled = true; status('Connecting…', 'busy'); msg('pedalMsg', '');
+  try {
+    await pedal.open(port, 115200);
+    await resetBoard(port);
+    // Say hello until the firmware answers (it listens 1.5 s after the restart)
+    const hello = pedal.waitFor(l => l.startsWith('MM4 '), 6000);
+    let answered = false;
+    hello.then(() => answered = true, () => {});
+    (async () => { for (let i = 0; i < 50 && !answered && pedal.writer; i++) { try { await pedal.send('MM?'); } catch (e) { break; } await sleep(110); } })();
+    const line = await hello;
+    const [, fw, mcu, size] = line.split(' ');
+    if (+size !== CFG_SIZE) throw new Error('This pedal has a different firmware version – install the firmware again.');
+    pedal.info = {fw: +fw, mcu};
+    pedal.connected = true;
+    const c = await pedal.request('R', l => l.startsWith('C '));
+    const fromPedal = decode(unhex(c.slice(2)));
+    if (state.dirty && !confirm('Load the setup from the pedal? Your unsaved changes here will be replaced.\n\nCancel keeps your changes, so you can save them to the pedal.')) {
+      setDirty(true);
+    } else { state.cfg = fromPedal; setDirty(false); }
+    status('Connected', 'on');
+    $('pedalInfo').innerHTML = `MIDI Muppet config firmware ${pedal.info.fw} · ${pedal.info.mcu === '168' ? 'ATmega168' : 'ATmega328P'}. The LED blinks green/red while the pedal is in setup mode.`;
+    renderAll(); updateButtons();
+  } catch (e) {
+    await pedal.close(); pedal.port = null;
+    status('Not connected', 'err');
+    msg('pedalMsg', e.message === 'timeout'
+      ? 'The pedal did not answer. If it still runs an old sketch, click “Install firmware” first. Otherwise unplug the USB cable, plug it in again and retry.'
+      : 'Could not connect: ' + e.message, 'err');
+    updateButtons();
+  }
+  $('btnConnect').disabled = false;
+}
+
+async function disconnect() {
+  if (pedal.connected) { try { await pedal.request('Q', l => l === 'BYE', 800); } catch (e) {} }
+  await pedal.close(); pedal.port = null;
+  status('Not connected'); $('pedalInfo').textContent = 'Not connected.';
+  state.live.clear(); setDirty(state.dirty); renderPedal(); updateButtons();
+}
+
+function lost() {
+  pedal.connected = false; pedal.port = null;
+  status('Connection lost', 'err'); $('pedalInfo').textContent = 'The pedal was unplugged.';
+  updateButtons(); renderPedal();
+}
+
+function buttonEvent(b, down) {
+  if (down) { state.live.add(b); if (state.sel !== b) { state.sel = b; renderButton(); } }
+  else state.live.delete(b);
+  renderPedal();
+}
+
+async function save() {
+  $('btnSave').disabled = true; msg('pedalMsg', 'Saving…');
+  try {
+    const data = encode(state.cfg);
+    const r = await pedal.request('W ' + hex(data), l => l === 'OK' || l.startsWith('ERR'), 3000);
+    if (r !== 'OK') throw new Error(r);
+    const c = await pedal.request('R', l => l.startsWith('C '));
+    if (c.slice(2) !== hex(data)) throw new Error('the pedal reads back something else');
+    setDirty(false); msg('pedalMsg', 'Saved to the pedal ✓', 'ok');
+  } catch (e) { msg('pedalMsg', 'Saving failed: ' + e.message, 'err'); }
+  updateButtons();
+}
+
+async function readPedal() {
+  try {
+    const c = await pedal.request('R', l => l.startsWith('C '));
+    state.cfg = decode(unhex(c.slice(2))); setDirty(false); renderAll(); msg('pedalMsg', 'Setup read from the pedal.', 'ok');
+  } catch (e) { msg('pedalMsg', 'Reading failed: ' + e.message, 'err'); }
+}
+
+function updateButtons() {
+  const on = pedal.connected;
+  $('btnSave').disabled = $('btnRead').disabled = $('btnLed').disabled = !on;
+  $('btnConnect').hidden = on; $('btnDisconnect').hidden = !on;
+  $('liveHint').style.display = on ? '' : 'none';
+  $('btnFlash').disabled = !('serial' in navigator);
+  setDirty(state.dirty);
+}
+
+$('btnConnect').onclick = connect;
+$('btnDisconnect').onclick = disconnect;
+$('btnSave').onclick = save;
+$('btnRead').onclick = readPedal;
+$('btnLed').onclick = async () => { try { await pedal.request('L 1', l => l === 'OK', 2500); } catch (e) {} };
+
+// ------------------------------------------------------------ firmware install (STK500v1, Arduino bootloaders)
+const FIRMWARE = {
+  '1e9406': {name: 'ATmega168', hex: /*HEX_ATMEGA168*/''},
+  '1e950f': {name: 'ATmega328P', hex: /*HEX_ATMEGA328P*/''},
+};
+
+function parseIntelHex(text) {
+  const mem = new Uint8Array(32768).fill(0xff); let top = 0, base = 0;
+  for (const raw of text.split(/\r?\n/)) {
+    const l = raw.trim(); if (!l) continue;
+    if (l[0] !== ':') throw new Error('bad hex file');
+    const b = unhex(l.slice(1)), n = b[0], addr = (b[1] << 8) | b[2], type = b[3];
+    let sum = 0; for (const x of b) sum += x; if ((sum & 255) !== 0) throw new Error('hex checksum');
+    if (type === 0) { mem.set(b.slice(4, 4 + n), base + addr); top = Math.max(top, base + addr + n); }
+    else if (type === 2) base = ((b[4] << 8) | b[5]) << 4;
+    else if (type === 1) break;
+  }
+  return mem.slice(0, top);
+}
+
+class Stk500 {
+  constructor(port) { this.port = port; this.q = []; this.wait = null; }
+  async open(baud) {
+    await this.port.open({baudRate: baud, bufferSize: 4096});
+    this.writer = this.port.writable.getWriter();
+    this.reader = this.port.readable.getReader();
+    this.loop = (async () => {
+      try { for (;;) { const {value, done} = await this.reader.read(); if (done) break; for (const x of value) this.q.push(x); if (this.wait) this.wait(); } }
+      catch (e) {}
+    })();
+  }
+  async close() {
+    try { await this.reader.cancel(); } catch (e) {}
+    try { await this.loop; } catch (e) {}
+    try { this.reader.releaseLock(); } catch (e) {}
+    try { this.writer.releaseLock(); } catch (e) {}
+    try { await this.port.close(); } catch (e) {}
+  }
+  async read(n, ms) {
+    const end = Date.now() + ms;
+    while (this.q.length < n) {
+      const left = end - Date.now(); if (left <= 0) throw new Error('timeout');
+      await new Promise(r => { this.wait = r; setTimeout(r, Math.min(left, 50)); });
+    }
+    return this.q.splice(0, n);
+  }
+  async cmd(bytes, replyLen = 0, ms = 500) {
+    this.q.length = 0;
+    await this.writer.write(new Uint8Array([...bytes, 0x20]));
+    const r = await this.read(replyLen + 2, ms);
+    if (r[0] !== 0x14 || r[r.length - 1] !== 0x10) throw new Error('bootloader said ' + hex(r));
+    return r.slice(1, -1);
+  }
+  async sync() {
+    for (let i = 0; i < 8; i++) {
+      try {
+        await this.cmd([0x30], 0, 200);
+        // Answers to earlier attempts may still be on their way: let them arrive, drop them, sync once more
+        await sleep(150); this.q.length = 0;
+        await this.cmd([0x30], 0, 300);
+        await sleep(30); this.q.length = 0;
+        return true;
+      } catch (e) { await sleep(30); }
+    }
+    return false;
+  }
+}
+
+async function flash() {
+  let port;
+  if (pedal.connected || pedal.port) { port = pedal.port; await pedal.close(); pedal.port = null; status('Not connected'); updateButtons(); }
+  try { port = port || await navigator.serial.requestPort(); } catch (e) { return; }
+  $('btnFlash').disabled = $('btnConnect').disabled = true;
+  const prog = $('flashProgress'); prog.hidden = false; prog.value = 0;
+  msg('flashMsg', 'Looking for the Arduino bootloader…');
+  let stk = null, done = false;
+  try {
+    // Nano with new bootloader: 115200, old Nano / Pro Mini 328P: 57600, Nano / Pro Mini 168: 19200
+    for (const baud of [115200, 57600, 19200]) {
+      stk = new Stk500(port);
+      await stk.open(baud);
+      await resetBoard(port);
+      await sleep(baud === 19200 ? 200 : 60);
+      if (await stk.sync()) break;
+      await stk.close(); stk = null;
+    }
+    if (!stk) throw new Error('No bootloader answered. Check the cable and that this is the Arduino\'s port, then try again.');
+    const sig = hex(await stk.cmd([0x75], 3)).toLowerCase();
+    const fw = FIRMWARE[sig];
+    if (!fw) throw new Error('This chip (signature ' + sig + ') is not an ATmega168 or ATmega328P.');
+    const image = parseIntelHex(fw.hex);
+    msg('flashMsg', `Installing on ${fw.name}…`);
+    await stk.cmd([0x50]);                                   // enter programming mode
+    const PAGE = 128, pages = Math.ceil(image.length / PAGE);
+    for (let p = 0; p < pages; p++) {
+      const addr = p * PAGE, data = new Uint8Array(PAGE).fill(0xff);
+      data.set(image.slice(addr, addr + PAGE));
+      await stk.cmd([0x55, (addr >> 1) & 255, (addr >> 9) & 255]);       // word address
+      await stk.cmd([0x64, 0, PAGE, 0x46, ...data], 0, 1000);           // program flash page
+      prog.value = (p + 1) / pages * 70;
+    }
+    msg('flashMsg', 'Checking…');
+    for (let p = 0; p < pages; p++) {
+      const addr = p * PAGE;
+      await stk.cmd([0x55, (addr >> 1) & 255, (addr >> 9) & 255]);
+      const got = await stk.cmd([0x74, 0, PAGE, 0x46], PAGE, 1000);
+      const want = image.slice(addr, addr + PAGE);
+      for (let i = 0; i < want.length; i++) if (got[i] !== want[i]) throw new Error('Check failed at byte ' + (addr + i) + '. Please try again.');
+      prog.value = 70 + (p + 1) / pages * 30;
+    }
+    await stk.cmd([0x51]);                                   // leave programming mode, start the firmware
+    done = true;
+    msg('flashMsg', `Firmware installed on the ${fw.name} ✓ Click “Connect pedal” to set it up.`, 'ok');
+  } catch (e) {
+    msg('flashMsg', e.message.startsWith('timeout') || e.message.startsWith('bootloader') ? 'Installing failed (' + e.message + '). Unplug the USB cable, plug it in again and retry.' : e.message, 'err');
+  }
+  if (stk) await stk.close();
+  pedal.port = port;           // remember the port for "Connect pedal"
+  if (!done) pedal.port = null;
+  $('btnFlash').disabled = $('btnConnect').disabled = false;
+  setTimeout(() => prog.hidden = true, done ? 3000 : 0);
+}
+$('btnFlash').onclick = flash;
+
+// ------------------------------------------------------------ start
+if (!('serial' in navigator)) { $('noSerial').classList.add('show'); $('btnConnect').disabled = true; }
+else navigator.serial.addEventListener?.('disconnect', e => { if (e.target === pedal.port && pedal.connected) { pedal.close(); lost(); } });
+window.addEventListener('beforeunload', e => { if (state.dirty && pedal.connected) { e.preventDefault(); e.returnValue = ''; } });
+window.__mm = {state, encode, decode, pedal, renderAll, CHOICES};   // for tests and the curious
+renderAll(); updateButtons();
+</script>
+</body>
+</html>

@@ -1,15 +1,71 @@
 # MIDI Muppet Multi 4btn
 
-A four button Arduino MIDI foot switch, with firmware for three different pedals:
+A four button Arduino MIDI foot switch that you set up from your browser.
+
+**[Open the web editor](https://jonsolberg.se:8080/MidiMuppet/)**: install the firmware, pick what every switch does and save it to the pedal over USB. No Arduino IDE needed.
 
 | Sketch | Pedal | What it does |
 |---|---|---|
+| [`midi_muppet_4btn_config`](midi_muppet_4btn_config/midi_muppet_4btn_config.ino) | Any MIDI device | **Universal firmware for the web editor.** Short and long press actions per switch, ready-made actions for HX Stomp, BOSS RC-500 and Wampler Terraform, and the MIDI Muppet HX modes |
 | [`midi_muppet_hx_4btn`](midi_muppet_hx_4btn/midi_muppet_hx_4btn.ino) | Line 6 HX Stomp | Preset/snapshot scrolling, FS4/FS5, looper, tuner, tap tempo, all bypass |
 | [`midi_Boss_RC500_4btn`](midi_Boss_RC500_4btn/midi_Boss_RC500_4btn.ino) | BOSS RC-500 Loop Station | Recalls 8 memories (short and long press) with Program Change |
 | [`midi_Wampler_Terraform_4btn`](midi_Wampler_Terraform_4btn/midi_Wampler_Terraform_4btn.ino) | Wampler Terraform | Recalls 8 presets (short and long press) with Program Change |
 
 ![MIDI Muppet Multi 4btn, top](images/pedal_top.jpg)
 ![MIDI Muppet Multi 4btn, MIDI and power sockets](images/pedal_front.jpg)
+
+## Web editor
+
+![The MIDI Muppet 4btn web editor](images/editor.png)
+
+The editor runs in Chrome, Edge or Opera on a computer (it uses Web Serial to talk to the Arduino):
+
+1. Connect the Arduino in the pedal to the computer with a USB cable.
+2. First time: click **Install firmware** and pick the Arduino's port. The editor finds the bootloader
+   (Nano with old or new bootloader, Pro Mini), checks the chip and installs the right firmware.
+3. Click **Connect pedal**. The pedal restarts and blinks green/red while it is in setup mode.
+   Press a switch on the pedal and it lights up in the editor.
+4. Click a switch in the picture and choose its short and long press actions, or start from a ready-made setup.
+5. **Save to pedal**, disconnect and play. Settings are kept in the Arduino's EEPROM.
+
+What a switch can do:
+
+- **Any MIDI device:** Program Change, Control Change, CC toggle (on/off), CC momentary (while held),
+  next/previous program in a range, each on the pedal's MIDI channel or its own.
+- **Line 6 HX Stomp:** tap tempo, tuner, preset and snapshot up/down, snapshot 1–8, FS1–FS5, all bypass,
+  looper controls, footswitch mode.
+- **BOSS RC-500:** memory 1–99, next/previous memory.
+- **Wampler Terraform:** preset, next/previous preset.
+- **HX Stomp profile:** switches 1 and 2 work exactly like the original MIDI Muppet HX (scroll, footswitch,
+  snapshot, looper and tuner modes, hold both to change mode), switches 3 and 4 get their own actions.
+
+A switch without a long press action reacts as soon as you step on it. With a long press action, the short
+press is sent when you lift your foot. The long press time, MIDI channel, LED feedback and red LED brightness
+can be set too. Setups can be exported to a file and imported again.
+
+### How it talks to the pedal
+
+After power-up the firmware listens on USB at 115200 baud for 1.5 seconds. If the editor says hello,
+it stays in setup mode. Otherwise it switches the serial port to MIDI speed (31250) and works as a foot
+switch, so nothing is sent to your other pedals while it listens. The setup protocol is plain text
+and is described at the top of the sketch.
+
+### Tests
+
+`tests/` runs the real compiled firmware in the [simavr](https://github.com/buserror/simavr) AVR simulator:
+
+- `test_firmware.py` checks the setup protocol, every action type, short/long press timing and all
+  HX Stomp modes on both ATmega168 and ATmega328P.
+- `e2e.js` opens the editor in headless Chrome with a simulated serial port wired to the simulated
+  pedal. It installs the firmware through the real ATmega168 Nano bootloader, then connects, edits, saves and
+  checks the pedal's EEPROM and MIDI output.
+
+```
+tools/build_editor.py                       # builds firmware/*.hex and editor/index.html
+gcc -O2 -o tests/harness tests/harness.c -lsimavr -lelf
+python3 tests/test_firmware.py
+node tests/e2e.js build/mm4config-atmega168.elf atmega168 <ATmegaBOOT_168_diecimila.hex> nano168
+```
 
 ## Credits
 
@@ -41,7 +97,10 @@ For a 3.3V Arduino, see the resistor values in the
 
 ## Building the firmware
 
-1. Install the libraries with the Arduino IDE library manager:
+The easiest way is the [web editor](https://jonsolberg.se:8080/MidiMuppet/), which installs the
+universal firmware for you. To build a sketch yourself:
+
+1. Install the libraries with the Arduino IDE library manager (the universal firmware needs none):
    [OneButton](https://github.com/mathertel/OneButton) (all sketches) and
    [JC_Button](https://github.com/JChristensen/JC_Button) (HX Stomp sketch).
 2. Open the sketch for your pedal.

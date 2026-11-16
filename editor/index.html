@@ -1,0 +1,791 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MIDI Muppet 4btn editor</title>
+<meta name="description" content="Set up the four button MIDI Muppet foot switch from your browser: actions for every switch, HX Stomp modes, BOSS RC-500 and Wampler Terraform presets.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Crect x='6' y='4' width='36' height='40' rx='6' fill='%23161a22'/%3E%3Ccircle cx='17' cy='14' r='4' fill='%23cfd6e0'/%3E%3Ccircle cx='31' cy='14' r='4' fill='%23cfd6e0'/%3E%3Ccircle cx='17' cy='34' r='4' fill='%23cfd6e0'/%3E%3Ccircle cx='31' cy='34' r='4' fill='%23cfd6e0'/%3E%3Ccircle cx='24' cy='24' r='2' fill='%2348d17a'/%3E%3C/svg%3E">
+<style>
+:root{
+  --bg:#f3f4f8;--card:#fff;--ink:#1b2030;--muted:#5f6878;--line:#dfe3ea;--accent:#d9572b;--accent-ink:#fff;
+  --ok:#1f9d55;--warn:#b7791f;--err:#c53030;--sel:#d9572b;--chip:#eef1f6;--shadow:0 1px 2px rgba(20,25,40,.06),0 6px 20px rgba(20,25,40,.06);
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#10131a;--card:#181c25;--ink:#e8ebf1;--muted:#9aa3b2;--line:#2a303c;--chip:#222836;--shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.25);
+}}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+a{color:var(--accent)}
+header.top{max-width:1180px;margin:0 auto;padding:22px 20px 6px;display:flex;flex-wrap:wrap;gap:12px 20px;align-items:center;justify-content:space-between}
+header.top h1{font-size:1.55rem;margin:0;letter-spacing:-.01em}
+header.top .sub{color:var(--muted);font-size:.92rem}
+.home{font-size:.88rem;color:var(--muted);text-decoration:none}
+.conn{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.status{display:inline-flex;align-items:center;gap:8px;font-size:.9rem;color:var(--muted);background:var(--card);border:1px solid var(--line);border-radius:999px;padding:6px 12px}
+.status i{width:9px;height:9px;border-radius:50%;background:#9aa3b2;display:inline-block}
+.status.on i{background:var(--ok)} .status.busy i{background:var(--warn);animation:pulse 1s infinite} .status.err i{background:var(--err)}
+@keyframes pulse{50%{opacity:.3}}
+button,.btn{font:inherit;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:10px;padding:8px 14px;cursor:pointer;display:inline-flex;align-items:center;gap:8px;text-decoration:none}
+button:hover:not(:disabled),.btn:hover{border-color:var(--muted)}
+button.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600}
+button:disabled{opacity:.45;cursor:not-allowed}
+main{max-width:1180px;margin:0 auto;padding:10px 20px 40px;display:grid;grid-template-columns:minmax(300px,380px) 1fr;gap:20px}
+@media (max-width:860px){main{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);padding:18px}
+.card h2{font-size:1.08rem;margin:0 0 12px}
+.card h3{font-size:.95rem;margin:16px 0 8px}
+.notice{margin:0 auto 4px;max-width:1140px;border-radius:12px;padding:10px 14px;font-size:.92rem;display:none}
+.notice.show{display:block}
+.notice.warn{background:#fff5e0;color:#6b4a0c;border:1px solid #f0d49a}
+@media (prefers-color-scheme:dark){.notice.warn{background:#2c2413;color:#f0d49a;border-color:#5a4718}}
+.wrapn{max-width:1180px;margin:0 auto;padding:0 20px}
+/* pedal */
+.pedal-wrap{position:sticky;top:12px}
+svg.pedal{width:100%;max-width:340px;display:block;margin:0 auto}
+.sw{cursor:pointer}
+.sw .ring{fill:none;stroke:transparent;stroke-width:5}
+.sw.sel .ring{stroke:var(--sel)}
+.sw.live .cap{fill:#ffd36b}
+.sw .num{font:700 20px system-ui;fill:#fff;text-anchor:middle;pointer-events:none}
+.sw text.lbl{font:600 12.5px system-ui;fill:#cfd6e0;text-anchor:middle;pointer-events:none}
+.sw text.lbl2{font:500 11px system-ui;fill:#8f9aab;text-anchor:middle;pointer-events:none}
+.legend{list-style:none;margin:14px 0 0;padding:0;display:grid;gap:6px}
+.legend li{display:grid;grid-template-columns:28px 1fr;gap:8px;align-items:start;padding:8px 10px;border-radius:10px;cursor:pointer;border:1px solid transparent}
+.legend li.sel{border-color:var(--sel);background:var(--chip)}
+.legend li.live{background:#ffd36b33}
+.legend b.n{display:inline-grid;place-items:center;width:26px;height:26px;border-radius:50%;background:#20252f;color:#fff;font-size:.85rem}
+.legend small{display:block;color:var(--muted);line-height:1.35}
+.hint{color:var(--muted);font-size:.86rem;margin:6px 0 0}
+/* forms */
+.row{display:grid;grid-template-columns:150px 1fr;gap:8px 12px;align-items:center;margin:8px 0}
+@media (max-width:520px){.row{grid-template-columns:1fr}}
+.row label{color:var(--muted);font-size:.9rem}
+select,input[type=number],input[type=text]{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:9px;padding:7px 9px;width:100%}
+input[type=number]{max-width:110px}
+input[type=range]{width:100%;accent-color:var(--accent)}
+.fields{display:flex;flex-wrap:wrap;gap:10px 16px}
+.fields .f{display:flex;flex-direction:column;gap:3px;min-width:120px}
+.fields .f span{font-size:.8rem;color:var(--muted)}
+.press{border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin:10px 0}
+.press h3{margin:0 0 8px;display:flex;justify-content:space-between;align-items:center;gap:10px}
+.press.disabled{opacity:.55}
+.tag{font-size:.75rem;font-weight:600;color:var(--muted);background:var(--chip);border-radius:999px;padding:2px 9px}
+.toolbar{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media (max-width:1050px){.grid2{grid-template-columns:1fr}}
+.msg{font-size:.9rem;margin-top:8px;min-height:1.3em}
+.msg.ok{color:var(--ok)} .msg.err{color:var(--err)}
+progress{width:100%;height:10px;accent-color:var(--accent)}
+.hxinfo{background:var(--chip);border-radius:12px;padding:12px 14px;font-size:.92rem}
+.hxinfo table{border-collapse:collapse;width:100%;font-size:.88rem;margin-top:6px}
+.hxinfo td{padding:3px 6px;border-top:1px solid var(--line);vertical-align:top}
+.hxinfo td:first-child{color:var(--muted);white-space:nowrap}
+details{margin-top:6px} summary{cursor:pointer;color:var(--muted)}
+footer{max-width:1180px;margin:0 auto;padding:10px 20px 40px;color:var(--muted);font-size:.85rem}
+.dirty{color:var(--warn);font-size:.85rem;font-weight:600}
+kbd{font:600 .8rem ui-monospace,monospace;background:var(--chip);border:1px solid var(--line);border-radius:5px;padding:0 5px}
+</style>
+</head>
+<body>
+<header class="top">
+  <div>
+    <a class="home" href="/">← jonsolberg.se</a>
+    <h1>MIDI Muppet 4btn editor</h1>
+    <div class="sub">Set up your four button MIDI foot switch over USB – no Arduino IDE needed.</div>
+  </div>
+  <div class="conn">
+    <span class="status" id="status"><i></i><span id="statusText">Not connected</span></span>
+    <button class="primary" id="btnConnect">Connect pedal</button>
+    <button id="btnDisconnect" hidden>Disconnect</button>
+  </div>
+</header>
+<div class="wrapn"><div class="notice warn" id="noSerial">Connecting to the pedal needs <b>Chrome, Edge or Opera on a computer</b> (Web Serial). You can still plan a setup here and export it to a file.</div></div>
+
+<main>
+  <section class="pedal-wrap">
+    <div class="card">
+      <svg class="pedal" id="pedal" viewBox="0 0 300 450" role="img" aria-label="The MIDI Muppet seen from above. Click a switch to edit it."></svg>
+      <ul class="legend" id="legend"></ul>
+      <p class="hint" id="liveHint">Connected: press a switch on the pedal and it lights up here.</p>
+    </div>
+  </section>
+
+  <section style="display:grid;gap:20px;align-content:start">
+    <div class="card" id="buttonCard">
+      <h2 id="btnTitle">Switch 1</h2>
+      <div id="btnBody"></div>
+    </div>
+
+    <div class="grid2">
+      <div class="card">
+        <h2>Pedal setup</h2>
+        <div class="row"><label for="profile">Profile</label>
+          <select id="profile">
+            <option value="0">Generic</option>
+            <option value="1">HX Stomp modes</option>
+          </select><div class="hint" style="grid-column:2" id="profileHint"></div></div>
+        <div class="row"><label for="channel">MIDI channel</label>
+          <select id="channel"></select></div>
+        <div class="row"><label for="longMs">Long press</label>
+          <div><input type="range" id="longMs" min="200" max="2000" step="50"><div class="hint" id="longMsVal"></div></div></div>
+        <div class="row"><label for="ledFeedback">LED</label>
+          <label style="color:var(--ink)"><input type="checkbox" id="ledFeedback"> Flash when a switch sends something</label></div>
+        <div class="row"><label for="red">Red LED brightness</label>
+          <div><input type="range" id="red" min="1" max="255"><div class="hint">Many bicolor LEDs are much brighter in red – turn it down if it dazzles.</div></div></div>
+        <div class="row" id="looperRow"><label for="looper">HX looper mode</label>
+          <label style="color:var(--ink)"><input type="checkbox" id="looper"> Include the looper when switching modes</label></div>
+        <h3>Start from a ready-made setup</h3>
+        <div class="toolbar">
+          <select id="template" style="max-width:340px">
+            <option value="">Choose…</option>
+            <option value="hx">HX Stomp – MIDI Muppet HX (up/down, tap, tuner, bypass)</option>
+            <option value="hx4">HX Stomp – snapshots and footswitches</option>
+            <option value="rc500">BOSS RC-500 – 8 memories</option>
+            <option value="rc500nav">BOSS RC-500 – memory up / down</option>
+            <option value="terraform">Wampler Terraform – 8 presets</option>
+            <option value="terraformnav">Wampler Terraform – preset up / down</option>
+            <option value="empty">Empty</option>
+          </select>
+          <button id="btnTemplate">Use</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Pedal</h2>
+        <div id="pedalInfo" class="hint">Not connected.</div>
+        <div class="toolbar" style="margin-top:12px">
+          <button class="primary" id="btnSave" disabled>Save to pedal</button>
+          <button id="btnRead" disabled>Read from pedal</button>
+          <button id="btnLed" disabled>Blink LED</button>
+        </div>
+        <div class="msg" id="pedalMsg"></div>
+        <span class="dirty" id="dirty" hidden>● Changes not saved to the pedal</span>
+        <h3>File</h3>
+        <div class="toolbar">
+          <button id="btnExport">Export setup</button>
+          <button id="btnImport">Import setup</button>
+          <input type="file" id="importFile" accept=".json,application/json" hidden>
+        </div>
+        <h3>Firmware</h3>
+        <p class="hint" style="margin-top:0">The editor needs the MIDI Muppet config firmware on the Arduino. Install it once – it works for Arduino Nano and Pro Mini with ATmega168 or ATmega328P.</p>
+        <div class="toolbar"><button id="btnFlash">Install firmware</button></div>
+        <progress id="flashProgress" value="0" max="100" hidden></progress>
+        <div class="msg" id="flashMsg"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>How it works</h2>
+      <ol style="margin:0;padding-left:20px">
+        <li>Connect the Arduino in the pedal to the computer with a USB cable.</li>
+        <li>First time: click <b>Install firmware</b> and pick the Arduino's port. Your old sketch is replaced.</li>
+        <li>Click <b>Connect pedal</b>. The pedal restarts and blinks green/red while it is in setup mode.</li>
+        <li>Click a switch in the picture, choose what a short and a long press should do, then <b>Save to pedal</b>.</li>
+        <li>Disconnect, plug in the MIDI cable and play. Settings stay on the pedal.</li>
+      </ol>
+      <details><summary>Details for the curious</summary>
+        <p class="hint">After power-up the firmware listens on USB for 1.5 seconds before it starts as a foot switch, so it doesn't send anything to your other pedals while it listens. A switch without a long press action reacts as soon as you step on it; with a long press action, the short press is sent when you lift your foot. In the HX Stomp profile, switches 1 and 2 work exactly like the original MIDI Muppet HX: scroll, footswitch, snapshot, looper and tuner modes, and holding both switches changes mode.</p>
+        <p class="hint">Wiring: switches on D2, D3, D6, D8 to ground; bicolor LED green on D4, red on D5; MIDI out on TX. See the <a href="https://github.com/jonsolberg/midi_muppet_multi_4btn">project on GitHub</a>.</p>
+      </details>
+    </div>
+  </section>
+</main>
+<footer>
+  MIDI Muppet 4btn by Jon Solberg, based on <a href="https://github.com/mattzzw/midi_muppet_hx_2btn">MIDI Muppet HX</a> by Matthias Wientapper.
+  Free software under GPL v3 · <a href="https://github.com/jonsolberg/midi_muppet_multi_4btn">Source on GitHub</a>
+</footer>
+
+<script>
+'use strict';
+/* MIDI Muppet 4btn editor
+ * Copyright (C) 2026 Jon Solberg – GPL v3 or later.
+ * Talks to midi_muppet_4btn_config firmware over Web Serial and installs it with the STK500 protocol.
+ */
+
+// ------------------------------------------------------------ config format (matches the firmware)
+const CFG_SIZE = 53, CFG_VERSION = 1;
+const T = {NONE:0, PC:1, CC:2, TOGGLE:3, MOMENTARY:4, NEXT:5, PREV:6, HXTUNER:7};
+const FLAG_LED = 1, FLAG_LOOPER = 2;
+const POS_NAMES = ['Top left', 'Top right', 'Bottom left', 'Bottom right'];
+const PINS = ['D2', 'D3', 'D6', 'D8'];
+
+const act = (type, ch = 0, a = 0, b = 0, c = 0) => ({type, ch, a, b, c});
+
+function defaultConfig() {
+  const progs = [[1, 5], [0, 4], [3, 7], [2, 6]];
+  return {profile: 0, channel: 0, ledFeedback: true, looper: true, red: 64, longMs: 800, pos: [0, 1, 2, 3],
+          actions: progs.flatMap(([s, l]) => [act(T.PC, 0, s), act(T.PC, 0, l)])};
+}
+
+function encode(c) {
+  const b = new Uint8Array(CFG_SIZE);
+  b[0] = 77; b[1] = 52; b[2] = CFG_VERSION;
+  b[3] = c.profile; b[4] = c.channel;
+  b[5] = (c.ledFeedback ? FLAG_LED : 0) | (c.looper ? FLAG_LOOPER : 0);
+  b[6] = c.red; b[7] = Math.round(c.longMs / 10);
+  c.pos.forEach((p, i) => b[8 + i] = p);
+  c.actions.forEach((x, i) => b.set([x.type, x.ch, x.a, x.b, x.c], 12 + i * 5));
+  let s = 0x5A; for (let i = 0; i < 52; i++) s += b[i];
+  b[52] = s & 255;
+  return b;
+}
+
+function decode(b) {
+  if (b.length !== CFG_SIZE || b[0] !== 77 || b[1] !== 52) throw new Error('not a MIDI Muppet setup');
+  if (b[2] !== CFG_VERSION) throw new Error('setup version ' + b[2] + ' is not supported');
+  const actions = [];
+  for (let i = 0; i < 8; i++) { const o = 12 + i * 5; actions.push(act(b[o], b[o + 1], b[o + 2], b[o + 3], b[o + 4])); }
+  return {profile: b[3], channel: b[4], ledFeedback: !!(b[5] & FLAG_LED), looper: !!(b[5] & FLAG_LOOPER),
+          red: b[6], longMs: b[7] * 10, pos: [b[8], b[9], b[10], b[11]], actions};
+}
+
+const hex = b => Array.from(b, x => x.toString(16).padStart(2, '0')).join('').toUpperCase();
+const unhex = h => new Uint8Array(h.match(/../g).map(x => parseInt(x, 16)));
+
+// ------------------------------------------------------------ action catalogue
+// Each choice turns an action into editable fields and back. Pedal presets come first when they match.
+const num = (key, label, min, max, def, offset = 0) => ({key, label, min, max, def, offset});
+const CHOICES = [
+  // HX Stomp
+  {id: 'hx-tap', group: 'Line 6 HX Stomp', label: 'Tap tempo', make: () => act(T.CC, 0, 64, 127)},
+  {id: 'hx-tuner', group: 'Line 6 HX Stomp', label: 'Tuner on/off', make: () => act(T.HXTUNER)},
+  {id: 'hx-pup', group: 'Line 6 HX Stomp', label: 'Next preset', make: () => act(T.CC, 0, 72, 127)},
+  {id: 'hx-pdn', group: 'Line 6 HX Stomp', label: 'Previous preset', make: () => act(T.CC, 0, 72, 0)},
+  {id: 'hx-snext', group: 'Line 6 HX Stomp', label: 'Next snapshot', make: () => act(T.CC, 0, 69, 8)},
+  {id: 'hx-sprev', group: 'Line 6 HX Stomp', label: 'Previous snapshot', make: () => act(T.CC, 0, 69, 9)},
+  {id: 'hx-snap', group: 'Line 6 HX Stomp', label: 'Snapshot…', fields: [num('b', 'Snapshot', 1, 8, 1, -1)], make: f => act(T.CC, 0, 69, f.b)},
+  {id: 'hx-fs', group: 'Line 6 HX Stomp', label: 'Footswitch FS1–FS5…', fields: [num('a', 'Footswitch', 1, 5, 4, 48)], match: x => x.type === T.CC && x.a >= 49 && x.a <= 53 && x.b === 127, make: f => act(T.CC, 0, f.a, 127)},
+  {id: 'hx-bypass', group: 'Line 6 HX Stomp', label: 'All bypass on/off', make: () => act(T.TOGGLE, 0, 70, 0, 127)},
+  {id: 'hx-lrec', group: 'Line 6 HX Stomp', label: 'Looper record', make: () => act(T.CC, 0, 60, 127)},
+  {id: 'hx-lodub', group: 'Line 6 HX Stomp', label: 'Looper overdub', make: () => act(T.CC, 0, 60, 0)},
+  {id: 'hx-lplay', group: 'Line 6 HX Stomp', label: 'Looper play', make: () => act(T.CC, 0, 61, 127)},
+  {id: 'hx-lstop', group: 'Line 6 HX Stomp', label: 'Looper stop', make: () => act(T.CC, 0, 61, 0)},
+  {id: 'hx-lundo', group: 'Line 6 HX Stomp', label: 'Looper undo/redo', make: () => act(T.CC, 0, 63, 127)},
+  {id: 'hx-mode-stomp', group: 'Line 6 HX Stomp', label: 'Footswitch mode: stomp', make: () => act(T.CC, 0, 71, 0)},
+  {id: 'hx-mode-snap', group: 'Line 6 HX Stomp', label: 'Footswitch mode: snapshot', make: () => act(T.CC, 0, 71, 3)},
+  // BOSS RC-500
+  {id: 'rc-mem', group: 'BOSS RC-500', label: 'Memory…', fields: [num('a', 'Memory', 1, 99, 1, -1)], make: f => act(T.PC, 0, f.a), match: x => x.type === T.PC && x.a <= 98, pedal: 'rc500'},
+  {id: 'rc-next', group: 'BOSS RC-500', label: 'Next memory', make: () => act(T.NEXT, 0, 0, 98), pedal: 'rc500'},
+  {id: 'rc-prev', group: 'BOSS RC-500', label: 'Previous memory', make: () => act(T.PREV, 0, 0, 98), pedal: 'rc500'},
+  // Wampler Terraform
+  {id: 'tf-pre', group: 'Wampler Terraform', label: 'Preset…', fields: [num('a', 'Preset', 1, 128, 1, -1)], make: f => act(T.PC, 0, f.a), match: x => x.type === T.PC, pedal: 'terraform'},
+  {id: 'tf-next', group: 'Wampler Terraform', label: 'Next preset', make: () => act(T.NEXT, 0, 0, 127), pedal: 'terraform'},
+  {id: 'tf-prev', group: 'Wampler Terraform', label: 'Previous preset', make: () => act(T.PREV, 0, 0, 127), pedal: 'terraform'},
+  // Generic MIDI
+  {id: 'none', group: 'Any MIDI device', label: 'Nothing', make: () => act(T.NONE)},
+  {id: 'pc', group: 'Any MIDI device', label: 'Program Change', generic: T.PC, fields: [num('a', 'Program (0–127)', 0, 127, 0)]},
+  {id: 'cc', group: 'Any MIDI device', label: 'Control Change', generic: T.CC, fields: [num('a', 'Controller', 0, 127, 0), num('b', 'Value', 0, 127, 127)]},
+  {id: 'toggle', group: 'Any MIDI device', label: 'CC toggle (on/off)', generic: T.TOGGLE, fields: [num('a', 'Controller', 0, 127, 0), num('b', '1st press value', 0, 127, 127), num('c', '2nd press value', 0, 127, 0)]},
+  {id: 'momentary', group: 'Any MIDI device', label: 'CC momentary (while held)', generic: T.MOMENTARY, shortOnly: true, fields: [num('a', 'Controller', 0, 127, 0), num('b', 'Value when pressed', 0, 127, 127), num('c', 'Value when released', 0, 127, 0)]},
+  {id: 'next', group: 'Any MIDI device', label: 'Next program', generic: T.NEXT, fields: [num('a', 'From program', 0, 127, 0), num('b', 'To program', 0, 127, 7)]},
+  {id: 'prev', group: 'Any MIDI device', label: 'Previous program', generic: T.PREV, fields: [num('a', 'From program', 0, 127, 0), num('b', 'To program', 0, 127, 7)]},
+];
+for (const ch of CHOICES) {
+  if (ch.generic !== undefined) ch.make = f => act(ch.generic, 0, f.a ?? 0, f.b ?? 0, f.c ?? 0);
+  if (!ch.match) {
+    if (ch.generic !== undefined) ch.match = x => x.type === ch.generic;
+    else if (!ch.fields) { const t = ch.make(); ch.match = x => x.type === t.type && x.a === t.a && x.b === t.b && x.c === t.c; }
+    else { const k = ch.fields[0].key, t = ch.make({[k]: 0}); ch.match = x => x.type === t.type && ['a', 'b', 'c'].filter(q => q !== k).every(q => x[q] === t[q]); }
+  }
+}
+const CH_BY_ID = Object.fromEntries(CHOICES.map(c => [c.id, c]));
+
+// Pick the best choice for an action, preferring the pedal the user works with
+function choiceFor(x, slot) {
+  const pref = state.pedalHint;
+  const fits = CHOICES.filter(c => c.match(x) && !(c.shortOnly && slot % 2));
+  return fits.find(c => c.pedal && c.pedal === pref) || fits.find(c => !c.pedal && !c.generic && c.id !== 'none' && c.group !== 'Any MIDI device') ||
+         fits.find(c => !c.pedal) || fits[0] || CH_BY_ID.none;
+}
+
+function describe(x, slot) {
+  if (state.cfg.profile === 1 && slot < 4) return '';
+  if (x.type === T.NONE) return 'Nothing';
+  const c = choiceFor(x, slot);
+  let d = c.label.replace('…', '');
+  if (c.fields) d += ' ' + c.fields.map(f => x[f.key] - f.offset).join('/');
+  if (c.id === 'pc') d = 'PC ' + x.a;
+  if (c.id === 'cc') d = 'CC ' + x.a + ' = ' + x.b;
+  if (c.id === 'toggle') d = 'CC ' + x.a + ' toggle ' + x.b + '/' + x.c;
+  if (c.id === 'momentary') d = 'CC ' + x.a + ' held ' + x.b + '/' + x.c;
+  if (c.id === 'next' || c.id === 'prev') d = c.label + ' ' + x.a + '–' + x.b;
+  if (x.ch) d += ' · ch ' + x.ch;
+  return d;
+}
+
+// ------------------------------------------------------------ templates
+const TEMPLATES = {
+  hx: () => ({...defaultConfig(), profile: 1, actions: [act(0), act(0), act(0), act(0),
+      act(T.CC, 0, 64, 127), act(T.HXTUNER), act(T.TOGGLE, 0, 6, 127, 0), act(T.TOGGLE, 0, 70, 0, 127)], hint: 'hx'}),
+  hx4: () => ({...defaultConfig(), profile: 0, actions: [act(T.CC, 0, 69, 9), act(T.HXTUNER), act(T.CC, 0, 69, 8), act(T.CC, 0, 64, 127),
+      act(T.CC, 0, 52, 127), act(T.CC, 0, 72, 0), act(T.CC, 0, 53, 127), act(T.CC, 0, 72, 127)], hint: 'hx'}),
+  rc500: () => ({...defaultConfig(), hint: 'rc500'}),
+  rc500nav: () => ({...defaultConfig(), actions: [act(T.PREV, 0, 0, 98), act(0), act(T.NEXT, 0, 0, 98), act(0),
+      act(T.PC, 0, 0), act(0), act(T.PC, 0, 1), act(0)], hint: 'rc500'}),
+  terraform: () => ({...defaultConfig(), hint: 'terraform'}),
+  terraformnav: () => ({...defaultConfig(), actions: [act(T.PREV, 0, 0, 127), act(0), act(T.NEXT, 0, 0, 127), act(0),
+      act(T.PC, 0, 0), act(0), act(T.PC, 0, 1), act(0)], hint: 'terraform'}),
+  empty: () => ({...defaultConfig(), actions: Array.from({length: 8}, () => act(0))}),
+};
+
+// ------------------------------------------------------------ state + UI
+const state = {cfg: defaultConfig(), sel: 0, dirty: false, pedalHint: null, live: new Set()};
+const $ = id => document.getElementById(id);
+
+function setDirty(d) { state.dirty = d; $('dirty').hidden = !d || !pedal.connected; }
+function changed() { setDirty(true); renderPedal(); }
+
+const SWITCH_XY = [[84, 84], [216, 84], [84, 316], [216, 316]];
+
+function renderPedal() {
+  const c = state.cfg;
+  let s = `<defs><linearGradient id="enc" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2a2f39"/><stop offset="1" stop-color="#14171d"/></linearGradient>
+    <radialGradient id="cap" cx=".35" cy=".3" r=".8"><stop offset="0" stop-color="#ffffff"/><stop offset=".5" stop-color="#c7ced8"/><stop offset="1" stop-color="#7d8794"/></radialGradient></defs>
+    <rect x="10" y="10" width="280" height="430" rx="26" fill="url(#enc)" stroke="#0b0d11" stroke-width="2"/>`;
+  // LED
+  s += `<circle cx="150" cy="215" r="11" fill="#9aa3ad"/><circle cx="150" cy="215" r="6.5" fill="${pedal.connected ? '#48d17a' : '#e7ecef'}" id="ledDot"/>`;
+  for (let b = 0; b < 4; b++) {
+    const [x, y] = SWITCH_XY[c.pos[b]];
+    const hx = c.profile === 1 && b < 2;
+    const l1 = hx ? (b === 0 ? 'UP' : 'DN') + ' · HX modes' : short(describe(c.actions[b * 2], b * 2));
+    const l2 = hx ? '' : (c.actions[b * 2].type === T.MOMENTARY ? 'held' : 'long: ' + short(describe(c.actions[b * 2 + 1], b * 2 + 1)));
+    const ly = y + 56;
+    s += `<g class="sw${state.sel === b ? ' sel' : ''}${state.live.has(b) ? ' live' : ''}" data-b="${b}" tabindex="0" role="button" aria-label="Switch ${b + 1}">
+      <circle class="ring" cx="${x}" cy="${y}" r="40"/>
+      <circle cx="${x}" cy="${y}" r="30" fill="#b9c1cc" stroke="#6b7480" stroke-width="2"/>
+      <polygon points="${hexPts(x, y, 25)}" fill="#a3acb8" stroke="#6b7480"/>
+      <circle class="cap" cx="${x}" cy="${y}" r="18" fill="url(#cap)" stroke="#5c6570"/>
+      <text class="num" x="${x}" y="${y + 7}" fill="#1b2030" style="fill:#1b2030">${b + 1}</text>
+      <text class="lbl" x="${x}" y="${ly}">${esc(l1)}</text>
+      <text class="lbl2" x="${x}" y="${ly + 15}">${esc(l2)}</text></g>`;
+  }
+  $('pedal').innerHTML = s;
+  $('pedal').querySelectorAll('.sw').forEach(g => {
+    g.onclick = () => select(+g.dataset.b);
+    g.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); select(+g.dataset.b); } };
+  });
+  // legend
+  $('legend').innerHTML = [0, 1, 2, 3].map(b => {
+    const hx = c.profile === 1 && b < 2;
+    const t = hx ? (b === 0 ? 'UP – HX Stomp modes' : 'DN – HX Stomp modes') :
+      describe(c.actions[b * 2], b * 2) + (c.actions[b * 2].type === T.MOMENTARY ? '' : ' · long: ' + describe(c.actions[b * 2 + 1], b * 2 + 1));
+    return `<li data-b="${b}" class="${state.sel === b ? 'sel' : ''}${state.live.has(b) ? ' live' : ''}"><b class="n">${b + 1}</b><span>${esc(t)}<small>${POS_NAMES[c.pos[b]]} · pin ${PINS[b]}</small></span></li>`;
+  }).join('');
+  $('legend').querySelectorAll('li').forEach(li => li.onclick = () => select(+li.dataset.b));
+}
+
+const hexPts = (x, y, r) => Array.from({length: 6}, (_, i) => { const a = Math.PI / 6 + i * Math.PI / 3; return (x + r * Math.cos(a)).toFixed(1) + ',' + (y + r * Math.sin(a)).toFixed(1); }).join(' ');
+const short = t => t.length > 19 ? t.slice(0, 18) + '…' : t;
+const esc = t => String(t).replace(/[&<>"]/g, m => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[m]));
+
+function select(b) { state.sel = b; renderPedal(); renderButton(); }
+
+function renderButton() {
+  const b = state.sel, c = state.cfg;
+  $('btnTitle').textContent = `Switch ${b + 1}`;
+  const body = $('btnBody');
+  let h = `<div class="row"><label for="pos">Place on the pedal</label><select id="pos">${POS_NAMES.map((n, i) => `<option value="${i}"${c.pos[b] === i ? ' selected' : ''}>${n}</option>`).join('')}</select></div>`;
+  if (c.profile === 1 && b < 2) {
+    h += `<div class="hxinfo"><b>${b === 0 ? 'UP' : 'DN'}</b> works like the original MIDI Muppet HX in the HX Stomp profile:
+      <table>
+      <tr><td>Scroll mode</td><td>${b === 0 ? 'next' : 'previous'} preset${b === 1 ? ' · long press: tuner' : ' · long press: snapshot mode'}</td></tr>
+      <tr><td>Footswitch mode</td><td>${b === 0 ? 'FS5' : 'FS4'}${b === 1 ? ' · long press: tuner' : ' · long press: snapshot mode'}</td></tr>
+      <tr><td>Snapshot mode</td><td>${b === 0 ? 'next' : 'previous'} snapshot${b === 1 ? ' · long press: tuner' : ' · long press: back to scroll/footswitch mode'}</td></tr>
+      <tr><td>Looper mode</td><td>${b === 0 ? 'play / stop · long press: undo/redo' : 'record / overdub (on press)'}</td></tr>
+      <tr><td>Tuner</td><td>any switch closes it</td></tr>
+      <tr><td>Hold UP + DN</td><td>scroll → footswitch → looper → scroll</td></tr>
+      </table>
+      <p class="hint">LED: red = scroll, green = footswitch/snapshot, blinking green = tuner, looper: green play, red record, yellow overdub.</p></div>`;
+    body.innerHTML = h;
+  } else {
+    const momentary = c.actions[b * 2].type === T.MOMENTARY;
+    const noLong = c.actions[b * 2 + 1].type === T.NONE;
+    h += pressEditor(b * 2, 'Short press', momentary ? 'while held' : (noLong ? 'acts on press' : 'acts when released'));
+    h += pressEditor(b * 2 + 1, 'Long press', momentary ? 'not used with momentary' : `hold ${c.longMs} ms`, momentary);
+    body.innerHTML = h;
+    for (const slot of [b * 2, b * 2 + 1]) wirePress(slot);
+  }
+  $('pos').onchange = e => {
+    const p = +e.target.value, other = c.pos.indexOf(p);
+    if (other >= 0) c.pos[other] = c.pos[b];
+    c.pos[b] = p; changed(); renderButton();
+  };
+}
+
+function pressEditor(slot, title, tag, disabled) {
+  const x = state.cfg.actions[slot], ch = choiceFor(x, slot);
+  const groups = [...new Set(CHOICES.map(c => c.group))];
+  const opts = groups.map(g => `<optgroup label="${g}">` + CHOICES.filter(c => c.group === g && !(c.shortOnly && slot % 2))
+    .map(c => `<option value="${c.id}"${c === ch ? ' selected' : ''}>${c.label}</option>`).join('') + '</optgroup>').join('');
+  let fields = '';
+  if (ch.fields) fields = ch.fields.map(f => `<label class="f"><span>${f.label}</span><input type="number" data-k="${f.key}" data-o="${f.offset}" min="${f.min}" max="${f.max}" value="${x[f.key] - f.offset}"></label>`).join('');
+  const chans = `<label class="f"><span>MIDI channel</span><select data-ch>${['<option value="0">Pedal setting</option>', ...Array.from({length: 16}, (_, i) => `<option value="${i + 1}"${x.ch === i + 1 ? ' selected' : ''}>${i + 1}</option>`)].join('')}</select></label>`;
+  return `<div class="press${disabled ? ' disabled' : ''}" data-slot="${slot}"><h3>${title} <span class="tag">${tag}</span></h3>
+    <div class="row"><label>Action</label><select data-choice${disabled ? ' disabled' : ''}>${opts}</select></div>
+    ${x.type !== T.NONE && !disabled ? `<div class="fields">${fields}${chans}</div>` : ''}</div>`;
+}
+
+function wirePress(slot) {
+  const el = document.querySelector(`.press[data-slot="${slot}"]`);
+  const x = state.cfg.actions[slot];
+  el.querySelector('[data-choice]').onchange = e => {
+    const c = CH_BY_ID[e.target.value];
+    const f = {}; (c.fields || []).forEach(d => f[d.key] = d.def + d.offset);
+    if (c.pedal) state.pedalHint = c.pedal;
+    const n = c.make(f); n.ch = x.ch;
+    state.cfg.actions[slot] = n;
+    changed(); renderButton();
+  };
+  el.querySelectorAll('input[data-k]').forEach(inp => inp.onchange = () => {
+    const min = +inp.min, max = +inp.max;
+    let v = Math.round(+inp.value); if (isNaN(v)) v = min; v = Math.max(min, Math.min(max, v)); inp.value = v;
+    x[inp.dataset.k] = v + +inp.dataset.o; changed();
+  });
+  const chs = el.querySelector('[data-ch]'); if (chs) chs.onchange = () => { x.ch = +chs.value; changed(); };
+}
+
+function renderSettings() {
+  const c = state.cfg;
+  $('profile').value = c.profile;
+  $('channel').innerHTML = Array.from({length: 16}, (_, i) => `<option value="${i}"${c.channel === i ? ' selected' : ''}>${i + 1}</option>`).join('');
+  $('longMs').value = c.longMs; $('longMsVal').textContent = (c.longMs / 1000).toFixed(2).replace(/0$/, '') + ' s';
+  $('ledFeedback').checked = c.ledFeedback; $('red').value = c.red; $('looper').checked = c.looper;
+  $('looperRow').style.display = c.profile === 1 ? '' : 'none';
+  $('profileHint').textContent = c.profile === 1 ? 'Switches 1 and 2 are UP and DN of the original MIDI Muppet HX; 3 and 4 have their own actions.' : 'Every switch has its own short and long press actions.';
+}
+
+function renderAll() { renderSettings(); renderPedal(); renderButton(); }
+
+$('profile').onchange = e => { state.cfg.profile = +e.target.value; if (state.cfg.profile === 1) state.pedalHint = 'hx'; changed(); renderAll(); };
+$('channel').onchange = e => { state.cfg.channel = +e.target.value; changed(); };
+$('longMs').oninput = e => { state.cfg.longMs = +e.target.value; renderSettings(); changed(); renderButton(); };
+$('ledFeedback').onchange = e => { state.cfg.ledFeedback = e.target.checked; changed(); };
+$('red').onchange = e => { state.cfg.red = +e.target.value; changed(); };
+$('looper').onchange = e => { state.cfg.looper = e.target.checked; changed(); };
+$('btnTemplate').onclick = () => {
+  const t = $('template').value; if (!t) return;
+  const n = TEMPLATES[t](); state.pedalHint = n.hint || null; delete n.hint;
+  n.channel = state.cfg.channel; n.pos = state.cfg.pos.slice();
+  state.cfg = n; changed(); renderAll();
+};
+
+// ------------------------------------------------------------ file import / export
+$('btnExport').onclick = () => {
+  const data = {format: 'midi-muppet-4btn', version: CFG_VERSION, setup: hex(encode(state.cfg)), pedalHint: state.pedalHint, readable: state.cfg};
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(data, null, 1)], {type: 'application/json'}));
+  a.download = 'midi-muppet-setup.json'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+};
+$('btnImport').onclick = () => $('importFile').click();
+$('importFile').onchange = async e => {
+  const f = e.target.files[0]; if (!f) return;
+  try {
+    const d = JSON.parse(await f.text());
+    if (d.format !== 'midi-muppet-4btn') throw new Error('not a MIDI Muppet setup file');
+    state.cfg = decode(unhex(d.setup)); state.pedalHint = d.pedalHint || null;
+    changed(); renderAll(); msg('pedalMsg', 'Setup imported. Save it to the pedal to use it.', 'ok');
+  } catch (err) { msg('pedalMsg', 'Could not import: ' + err.message, 'err'); }
+  e.target.value = '';
+};
+
+function msg(id, text, kind) { const m = $(id); m.textContent = text; m.className = 'msg' + (kind ? ' ' + kind : ''); }
+function status(text, kind) { $('statusText').textContent = text; $('status').className = 'status' + (kind ? ' ' + kind : ''); }
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+// ------------------------------------------------------------ serial: setup protocol
+const pedal = {
+  port: null, reader: null, writer: null, connected: false, lines: [], waiters: [], buf: '', info: null,
+
+  async open(port, baud) {
+    this.port = port;
+    await port.open({baudRate: baud, bufferSize: 4096});
+    this.writer = port.writable.getWriter();
+    this.reading = this.readLoop();
+  },
+
+  async readLoop() {
+    this.reader = this.port.readable.getReader();
+    const dec = new TextDecoder();
+    try {
+      for (;;) {
+        const {value, done} = await this.reader.read();
+        if (done) break;
+        this.buf += dec.decode(value, {stream: true});
+        let i;
+        while ((i = this.buf.indexOf('\n')) >= 0) {
+          const line = this.buf.slice(0, i).replace(/\r$/, ''); this.buf = this.buf.slice(i + 1);
+          this.onLine(line);
+        }
+      }
+    } catch (e) { /* port closed or unplugged */ }
+    finally { try { this.reader.releaseLock(); } catch (e) {} }
+    if (this.connected) lost();
+  },
+
+  onLine(line) {
+    const m = line.match(/^P ([1-4]) ([01])$/);
+    if (m) { buttonEvent(+m[1] - 1, m[2] === '1'); return; }
+    const w = this.waiters.findIndex(w => w.test(line));
+    if (w >= 0) { const [x] = this.waiters.splice(w, 1); clearTimeout(x.timer); x.resolve(line); }
+  },
+
+  send(text) { return this.writer.write(new TextEncoder().encode(text + '\n')); },
+
+  waitFor(test, ms) {
+    return new Promise((resolve, reject) => {
+      const w = {test, resolve, timer: setTimeout(() => { this.waiters.splice(this.waiters.indexOf(w), 1); reject(new Error('timeout')); }, ms)};
+      this.waiters.push(w);
+    });
+  },
+
+  async request(cmd, test, ms = 1500) { const p = this.waitFor(test, ms); await this.send(cmd); return p; },
+
+  async close() {
+    this.connected = false;
+    try { await this.reader?.cancel(); } catch (e) {}
+    try { await this.reading; } catch (e) {}
+    try { this.writer?.releaseLock(); } catch (e) {}
+    try { await this.port?.close(); } catch (e) {}
+    this.reader = this.writer = null; this.buf = ''; this.waiters = [];
+  },
+};
+
+async function resetBoard(port) {
+  // Pulse DTR/RTS: restarts an Arduino Nano / Pro Mini with auto-reset
+  try {
+    await port.setSignals({dataTerminalReady: false, requestToSend: false});
+    await sleep(120);
+    await port.setSignals({dataTerminalReady: true, requestToSend: true});
+  } catch (e) {}
+}
+
+async function choosePort() {
+  if (pedal.port) return pedal.port;
+  return navigator.serial.requestPort();
+}
+
+async function connect() {
+  let port;
+  try { port = await choosePort(); } catch (e) { return; }   // user cancelled
+  $('btnConnect').disabled = true; status('Connecting…', 'busy'); msg('pedalMsg', '');
+  try {
+    await pedal.open(port, 115200);
+    await resetBoard(port);
+    // Say hello until the firmware answers (it listens 1.5 s after the restart)
+    const hello = pedal.waitFor(l => l.startsWith('MM4 '), 6000);
+    let answered = false;
+    hello.then(() => answered = true, () => {});
+    (async () => { for (let i = 0; i < 50 && !answered && pedal.writer; i++) { try { await pedal.send('MM?'); } catch (e) { break; } await sleep(110); } })();
+    const line = await hello;
+    const [, fw, mcu, size] = line.split(' ');
+    if (+size !== CFG_SIZE) throw new Error('This pedal has a different firmware version – install the firmware again.');
+    pedal.info = {fw: +fw, mcu};
+    pedal.connected = true;
+    const c = await pedal.request('R', l => l.startsWith('C '));
+    const fromPedal = decode(unhex(c.slice(2)));
+    if (state.dirty && !confirm('Load the setup from the pedal? Your unsaved changes here will be replaced.\n\nCancel keeps your changes, so you can save them to the pedal.')) {
+      setDirty(true);
+    } else { state.cfg = fromPedal; setDirty(false); }
+    status('Connected', 'on');
+    $('pedalInfo').innerHTML = `MIDI Muppet config firmware ${pedal.info.fw} · ${pedal.info.mcu === '168' ? 'ATmega168' : 'ATmega328P'}. The LED blinks green/red while the pedal is in setup mode.`;
+    renderAll(); updateButtons();
+  } catch (e) {
+    await pedal.close(); pedal.port = null;
+    status('Not connected', 'err');
+    msg('pedalMsg', e.message === 'timeout'
+      ? 'The pedal did not answer. If it still runs an old sketch, click “Install firmware” first. Otherwise unplug the USB cable, plug it in again and retry.'
+      : 'Could not connect: ' + e.message, 'err');
+    updateButtons();
+  }
+  $('btnConnect').disabled = false;
+}
+
+async function disconnect() {
+  if (pedal.connected) { try { await pedal.request('Q', l => l === 'BYE', 800); } catch (e) {} }
+  await pedal.close(); pedal.port = null;
+  status('Not connected'); $('pedalInfo').textContent = 'Not connected.';
+  state.live.clear(); setDirty(state.dirty); renderPedal(); updateButtons();
+}
+
+function lost() {
+  pedal.connected = false; pedal.port = null;
+  status('Connection lost', 'err'); $('pedalInfo').textContent = 'The pedal was unplugged.';
+  updateButtons(); renderPedal();
+}
+
+function buttonEvent(b, down) {
+  if (down) { state.live.add(b); if (state.sel !== b) { state.sel = b; renderButton(); } }
+  else state.live.delete(b);
+  renderPedal();
+}
+
+async function save() {
+  $('btnSave').disabled = true; msg('pedalMsg', 'Saving…');
+  try {
+    const data = encode(state.cfg);
+    const r = await pedal.request('W ' + hex(data), l => l === 'OK' || l.startsWith('ERR'), 3000);
+    if (r !== 'OK') throw new Error(r);
+    const c = await pedal.request('R', l => l.startsWith('C '));
+    if (c.slice(2) !== hex(data)) throw new Error('the pedal reads back something else');
+    setDirty(false); msg('pedalMsg', 'Saved to the pedal ✓', 'ok');
+  } catch (e) { msg('pedalMsg', 'Saving failed: ' + e.message, 'err'); }
+  updateButtons();
+}
+
+async function readPedal() {
+  try {
+    const c = await pedal.request('R', l => l.startsWith('C '));
+    state.cfg = decode(unhex(c.slice(2))); setDirty(false); renderAll(); msg('pedalMsg', 'Setup read from the pedal.', 'ok');
+  } catch (e) { msg('pedalMsg', 'Reading failed: ' + e.message, 'err'); }
+}
+
+function updateButtons() {
+  const on = pedal.connected;
+  $('btnSave').disabled = $('btnRead').disabled = $('btnLed').disabled = !on;
+  $('btnConnect').hidden = on; $('btnDisconnect').hidden = !on;
+  $('liveHint').style.display = on ? '' : 'none';
+  $('btnFlash').disabled = !('serial' in navigator);
+  setDirty(state.dirty);
+}
+
+$('btnConnect').onclick = connect;
+$('btnDisconnect').onclick = disconnect;
+$('btnSave').onclick = save;
+$('btnRead').onclick = readPedal;
+$('btnLed').onclick = async () => { try { await pedal.request('L 1', l => l === 'OK', 2500); } catch (e) {} };
+
+// ------------------------------------------------------------ firmware install (STK500v1, Arduino bootloaders)
+const FIRMWARE = {
+  '1e9406': {name: 'ATmega168', hex: ":100000000C948B000C9409090C9430090C94B300E7\n:100010000C94B3000C94B3000C94B3000C94AC0E8D\n:100020000C94B3000C94B3000C94B3000C94B30084\n:100030000C94B3000C94B3000C94B3000C94B30074\n:100040000C9458090C94B3000C94BE0C0C94F00C56\n:100050000C94B3000C94B3000C94B3000C94B30054\n:100060000C94B3000C94B3002030005020002031D9\n:100070000050200045525220756E6B6E6F776E00F7\n:10008000425945004F4B004F4B004F4B00455252D9\n:1000900020696E76616C696400455252206865780B\n:1000A000004552522073697A6500432000203136A2\n:1000B0003820004D4D3420000000000800020100EF\n:1000C0000003040700000000000000000102040813\n:1000D00010204080010204081020010204081020B2\n:1000E00004040404040404040202020202020303DE\n:1000F0000303030300000000230026002900000082\n:100100000000250028002B0000000000240027002C\n:100110002A000200200D11241FBECFEFD4E0DEBF65\n:10012000CDBF11E0A0E0B1E0E2ECFEE102C005903D\n:100130000D92A434B107D9F722E0A4E4B1E001C0E4\n:100140001D92A43EB207E1F710E0CBE8D0E004C076\n:100150002197FE010E943A0FCA38D107C9F70E94C1\n:10016000090F0C945F0F0C9400000895CF93C82FD3\n:1001700061E770E080E492E00E94890D6C2F70E0EE\n:100180006F5F7F4F4AE050E080E492E00E945E0E95\n:100190006EE670E080E492E0CF910C94B80DCF93BE\n:1001A000C82F6BE670E080E492E00E94890D6C2F0E\n:1001B00070E06F5F7F4F4AE050E080E492E00E9481\n:1001C0005E0E68E670E080E492E0CF910C94B80D8A\n:1001D0006091080270E085E00C94470ADC01ED9123\n:1001E000FC910190F081E02D0994FF920F931F93F1\n:1001F000CF93DF93EC01F62E08811981C8010E948C\n:10020000490FF81621F06F2DC8010E94510FCE0141\n:10021000DF91CF911F910F91FF900895FC019C01F8\n:100220002C5C3F4F8AE59191890FE217F307D9F7CC\n:100230000895CF93DF93CDB7DEB728970FB6F89424\n:10024000DEBF0FBECDBFE4E0F2E083E3DF011D922D\n:100250008A95E9F78DE48093020284E38093030298\n:1002600091E09093040283E08093070220E42093BE\n:10027000080220E52093090290930B0292E09093EC\n:100280000C0280930D0288E0E7E0F1E0DE011196B8\n:1002900001900D928A95E1F7DE011196E2E0F2E01D\n:1002A0002AE232E081E09C91848715869687178642\n:1002B000108A11969C911197818B128A938B148AC4\n:1002C000158A12963A962E173F0769F782E092E058\n:1002D0000E940E018093360228960FB6F894DEBF76\n:1002E0000FBECDBFDF91CF910895CF93DF93EC0187\n:1002F00088818D3491F48981843379F48A818130C5\n:1003000061F48C81803148F48B81823030F4CE01ED\n:100310000E940E0191E02CA9281390E0892FDF9113\n:10032000CF9108950F931F93CF93DF9302E012E0D4\n:10033000D0E0C0E0CE010E94490FF80181938F0107\n:100340002196C533D105B1F782E092E00E94750194\n:10035000811106C0DF91CF911F910F910C9419016B\n:10036000DF91CF911F910F910895EF92FF920F931C\n:100370001F93CF93DF9300D0CDB7DEB782E0E82E96\n:1003800082E0F82E10E000E0F70161917F011A830E\n:100390000983CE0101960E94F5000F5F1F4F0533C0\n:1003A000110591F70F900F90DF91CF911F910F9151\n:1003B000FF90EF900895CF93C62F8F70806C682FB9\n:1003C00070E080E492E00E94EE00CF776C2F70E046\n:1003D00080E492E0CF910C94EE00CF93DF93D62F80\n:1003E000C42F8F70806B682F70E080E492E00E94D1\n:1003F000EE00DF776D2F70E080E492E00E94EE0067\n:10040000CF776C2F70E080E492E0DF91CF910C9475\n:10041000EE00462F682F809106020C94ED018111A9\n:100420000C94E80060E085E00C94090B682F84E0F0\n:100430000C94090B9091070290FF11C0662379F08C\n:100440008093FB01660F6093FA010E94A2096093FA\n:10045000F6017093F7018093F8019093F9010895E4\n:100460000F931F93CF938091FA018823A1F10E94EB\n:10047000A2090091F6011091F7012091F801309145\n:10048000F901601B710B820B930B97FD24C0C09187\n:10049000FA01C17080E00E94160280E00E940F0203\n:1004A000C11106C08091FB018530C9F40E94E800AB\n:1004B0008091FA0181508093FA010E94A2096A5B3F\n:1004C0007F4F8F4F9F4F6093F6017093F70180939A\n:1004D000F8019093F901CF911F910F91089581E058\n:1004E0000E941602E5CFCF92DF92EF92FF921F9308\n:1004F000CF93DF93D82F162FC0E06A01F12CE12CA7\n:10050000C117C1F0D53091F40E94E800C701B601CF\n:100510000E94D30980E00E94160280E00E940F0230\n:10052000C701B6010E94D309CF5FEACF81E00E94E4\n:100530001602ECCFDF91CF911F91FF90EF90DF90EB\n:10054000CF90089580910902843128F02AE0829F9B\n:10055000C0011124089588EC90E00895EF92FF9275\n:100560000F931F93CF93DF930AE211E0CAECD1E01F\n:10057000EE24E394F801F1908F0162E08F2D0E9448\n:10058000CD0A8F2D0E94370B21E0892B09F020E046\n:10059000288329830E94A2096A837B838C839D839D\n:1005A000EA862B96F1E00E321F0721F7DF91CF91FB\n:1005B0001F910F91FF90EF9008954F925F926F926D\n:1005C0007F928F929F92AF92BF92CF92DF92EF92E3\n:1005D000FF920F931F93CF93DF930E94A2096B01A9\n:1005E0007C018AE2A82E81E0B82ECAECD1E010E0AE\n:1005F00001E0F50181915F010E94370B9C0191E0C0\n:100600002115310509F090E08981891729F0998336\n:10061000CA82DB82EC82FD828881891719F14A81C6\n:100620005B816C817D8136014701641A750A860AF7\n:10063000970AB401A301443151056105710590F099\n:100640009883E091C601F091C701232B49F4CE8233\n:10065000DF82E886F9861A86E091C801F091C90127\n:10066000812F099588818823E9F08A8581111AC034\n:100670008E819F81A885B98526013701481A590ABC\n:100680006A0A7B0A0E94A202B0E0A0E0481659065E\n:100690006A067B0638F00A87E091C401F091C50133\n:1006A000812F09951F5F2B96143009F0A2CFDF919F\n:1006B000CF911F910F91FF90EF90DF90CF90BF905F\n:1006C000AF909F908F907F906F905F904F90089524\n:1006D000880F95E0899FF0011124EE5FFD4F81E0C6\n:1006E0009485943009F080E00895CF93C82F0E943C\n:1006F000680381110DC0EC2FEE0FEF5F85E0E89FDE\n:10070000F0011124EE5FFD4F81E09485911101C04D\n:1007100080E0CF91089580910702869581700895B9\n:10072000FF920F931F93CF93DF9300D0CDB7DEB727\n:10073000809300029093010224E630E03A832983FB\n:10074000682FCE0101960E94F500809100029091E1\n:10075000010260E0019709F463E087E40E94090266\n:1007600080910002909101029093FD018093FC0121\n:1007700023E030E0309301012093000183309105A4\n:10078000F9F410E000E0FF24F394812F81700E94BF\n:100790001602812F8F250E940F026BE470E080E02B\n:1007A00090E00E94D3090F5F1F5F1170063069F758\n:1007B0000F900F90DF91CF911F910F91FF900895AF\n:1007C000892B39F084E04EE150E065E00E9473022D\n:1007D000EFCF85E0F8CF60E084E40E94090262E098\n:1007E00085E00E941A0280910002909101028430FB\n:1007F000910549F48091FE019091FF0190930102CF\n:100800008093000208959093FF018093FE0184E09D\n:1008100090E0F4CFCF93DF93982F282F30E085E03E\n:10082000989FD0011124A25FBD4F11968C91119712\n:100830008823B9F08150C4E090FDC5E04C91EFEF02\n:10084000E40FE73008F04FC0D62FF0E0E65DFB4F35\n:100850000C943A0F34043F04490468047A047A047F\n:10086000A20480910602E7CF12966C916093C301B7\n:100870000E94DB016091C30163706F5F08C0139633\n:100880004C91139712966C910E94ED0161E08C2FB0\n:1008900015C0E901C554DE4F988121E09227988365\n:1008A000992381F013964C91139712966C910E94A4\n:1008B000ED01888181110AC085E061E0DF91CF916F\n:1008C0000C941A0214964C911497EFCF84E0F5CF54\n:1008D000662361F014964C91149712966C910E94C5\n:1008E000ED01DD2399F2DF91CF91089513964C919C\n:1008F0001397F3CF12969C91129713963C91292F40\n:10090000391708F4232F931708F4932F3091C3015C\n:10091000321710F0931740F4453009F0292F209337\n:10092000C3016091C301A4CF453029F43917B8F74A\n:1009300021E0230FF4CF231710F49FEF930F909330\n:10094000C301EFCF90910502913021F4DF91CF9157\n:100950000C94EB0340E064E40E94ED0162E097CF69\n:10096000CF93C82F0E946803811105C08C2F0E946D\n:10097000750381110EC08BE0C89FF0011124E6536E\n:10098000FE4F81E0828760E08C2F880FCF910C941E\n:100990000A04CF910895CF93C82F0E94680361E0A5\n:1009A000811111C08C2F0E947503882389F08BE080\n:1009B000C89FF0011124E653FE4F8285811108C0C3\n:1009C00081E0828760E08C2F880FCF910C940A041D\n:1009D000CF910895CF93C82F0E947503882339F0D3\n:1009E0008C2F880F60E08F5FCF910C940A04CF9119\n:1009F000089580910001909101018330910550F498\n:100A0000019798F010920101109200016FE78DE3B9\n:100A10000C940902039789F481E090E0909301011E\n:100A2000809300016FE78CE3F3CF82E090E0909336\n:100A300001018093000160E0F6CF08958230F0F06C\n:100A4000209100023091010224303105A9F4E82FF1\n:100A5000EE0F95E0E99FF0011124EE5FFD4F9485C4\n:100A6000973051F09BE0899FF0011124E653FE4F2F\n:100A700081E082870C94EB030C94B004813079F40C\n:100A800020910002309101022330310541F4909110\n:100A9000CA01911104C08093DF010C94F9040895F8\n:100AA00020910002309101022230310501F138F429\n:100AB0002115310559F02130310599F00895233081\n:100AC0003105F1F024303105C9F0089560E081115D\n:100AD00001C06FE788E40E94090262E085E00C949F\n:100AE0001A0269E0811101C068E085E4F4CF88232F\n:100AF00019F084E360E0EFCF85E3FCCF0C94EB03C7\n:100B0000811114C08091000190910101039741F47B\n:100B100010920101109200016FE78DE30C9409021D\n:100B2000309301012093000160E0F7CF08958230F7\n:100B300010F00C94CB049BE0899FF0011124E65344\n:100B4000FE4F9285911104C091E092870C9450055C\n:100B50000895CF93DF9300D0CDB7DEB7813089F40D\n:100B60008091CA01811108C0809100029091010218\n:100B7000039710F40E94EB030F900F90DF91CF9139\n:100B8000089580910002909101022091D5012223C5\n:100B9000E9F021E02093DF018330910548F40197CB\n:100BA00080F00E948B03882349F083E090E00BC023\n:100BB000039711F760E08DE30E94090290E080E066\n:100BC00002C082E090E00E949003D6CF8130910570\n:100BD00099F1B0F08230910599F0039769F6809110\n:100BE000000190910101009711F0039729F66FE73A\n:100BF0008FE30E94090263E085E00E941A02BCCFE5\n:100C00009093FD018093FC0163E087E40E94090258\n:100C100065E085E00E941A0281E090E09093010275\n:100C20008093000284E690E09A83898361E0CE019C\n:100C300001960E94F500A0CF60E087E40E940902BF\n:100C400065E085E00E941A028091FC019091FD010F\n:100C500062E0029709F060E06093000210920102E6\n:100C600084E690E09A838983E2CF823010F00C947E\n:100C7000EA040C94A9050F931F93809100029091B0\n:100C800001028330910550F4019780F080E00E94CA\n:100C90000F0281E01F910F910C9416028330910591\n:100CA000A9F1049751F01F910F91089580E00E94DF\n:100CB00016021F910F910C94E80080E00E940F0231\n:100CC0000E94A2090091B7011091B8012091B901C9\n:100CD0003091BA01601B710B820B930B643F714022\n:100CE0008105910500F30E94A2096093B7017093FA\n:100CF000B8018093B9019093BA0184E00E94370B48\n:100D000021E0892B09F020E0822FC4CF209100013F\n:100D1000309101012D7F81E0232B09F080E00E94BA\n:100D2000160220910001309101012150310981E02A\n:100D30002230310508F080E01F910F910C940F02D2\n:100D400090ED980F9A3010F4892F08959FE9980F2D\n:100D5000963010F4875508959FEB980F963010F455\n:100D6000875308958FEF0895CF93C82FE82FF0E0B1\n:100D700084E0F595E7958A95E1F7E15FFE4F6081A4\n:100D8000062E000C770B80E492E00E94EE00CF70FC\n:100D9000EC2FF0E0E15FFE4F6081062E000C770B38\n:100DA00080E492E0CF910C94EE0063EB70E080E47D\n:100DB00092E00E94890D4AE050E061E070E080E43A\n:100DC00092E00E945E0E6DEA70E080E492E00E9484\n:100DD000890D4AE050E065E370E080E492E00C9415\n:100DE000650E9F92AF92BF92CF92DF92EF92FF92E9\n:100DF0000F931F93CF93DF93CDB7DEB7E5970FB671\n:100E0000F894DEBF0FBECDBF8C0160E271E00E949E\n:100E1000400F892B21F40E94D50681E0B6C064E220\n:100E200071E0C8010E94400F892BC9F46AEA70E0A2\n:100E300080E492E00E94890D02E012E087E3E82E50\n:100E400082E0F82ED8018D918D010E94B406E01643\n:100E5000F106C1F780E492E00E94B40DDECFF80104\n:100E6000F080F7E5FF1260C0D80111968C918032B6\n:100E700009F05AC0F8013296DF010D900020E9F721\n:100E8000CD018B56910961EA70E08E179F07C9F476\n:100E9000FE0131967F016801FAE6CF0ED11C9E2C2F\n:100EA000AF2CD80112968C910E94A006B82EF801A2\n:100EB00083810E94A006B7FC02C087FF07C069E9D2\n:100EC00070E080E492E00E94B80DA7CFFB2D40E1D6\n:100ED000F40290011124822BD7018D937D010E5FC6\n:100EE0001F4F0C151D05E9F6892D9A2D0E947501DD\n:100EF0006DE870E0882329F385E3E92DFA2DA2E05F\n:100F0000B2E001900D928A95E1F70E94B5016AE87E\n:100F100070E080E492E00E94B80D40E550E062E0AD\n:100F200084E00E94730279CF66E271E0C8010E94FA\n:100F3000400F892B39F40E9419010E94B50167E81E\n:100F400070E0BFCFBCE4FB1212C0F8018181803297\n:100F500071F48281823349F084E048E750E063E035\n:100F60000E94730264E870E0ACCF85E0F6CF68E2DF\n:100F700071E0C8010E94400F892BC9F460E870E05D\n:100F800080E492E00E94B80D80E0E5960FB6F894F8\n:100F9000DEBF0FBECDBFDF91CF911F910F91FF90AC\n:100FA000EF90DF90CF90BF90AF909F900895FF207B\n:100FB00009F433CF64E770E084CFCF9380E492E00C\n:100FC0000E949C0C26E042E15AE760E070E080E479\n:100FD00092E00E943A0CEBEBF1E088E0DF011D9219\n:100FE0008A95E9F70E94AE0280910502813031F5C1\n:100FF0008EE195E09093C9018093C80187E995E05F\n:101000009093C7018093C60185E396E09093C50154\n:101010008093C40184E690E00E94490FC82F843079\n:1010200058F4833021F40E948B03882329F08C2FFD\n:1010300090E0CF910C949003C0E0F9CF80EB94E066\n:101040009093C9018093C8018BEC94E09093C70101\n:101050008093C6018AEE94E09093C5018093C40109\n:101060004CE350E063E084E0CF910C9473020E9463\n:10107000DD028091FA0181110C9430028091050209\n:10108000813011F40C943B06089580E492E00E94B4\n:10109000600B892B01F180E492E00E947A0B8D3085\n:1010A000A1F3E09144018A3041F4F0E0EB5BFE4FA4\n:1010B00010821092440181E00895E13748F491E0F4\n:1010C0009E0F90934401F0E0EB5BFE4F8083DDCFF9\n:1010D00010924401DACF80E00895CF92DF92EF9230\n:1010E000FF92CF9326E040E052EC61E070E080E4B4\n:1010F00092E00E943A0C0E94A2096B017C010E94BE\n:10110000A2096C197D098E099F096C3D7540810506\n:101110009105B0F40E944508C82F882381F360E24E\n:1011200071E085E491E00E94400F892B41F70E9415\n:10113000D5068C2FCF91FF90EF90DF90CF90089540\n:10114000C0E0F7CFCF92DF92EF92FF921F93CF9341\n:10115000DF9386EB90E09093C9018093C8018FECF8\n:1011600090E09093C7018093C60185EB90E0909347\n:10117000C5018093C401C0E0C12CD12C760111E0DF\n:101180000E9445088823B1F085E491E00E94F106B1\n:10119000811110C00E94160280E00E940F0280E4BC\n:1011A00092E0DF91CF911F91FF90EF90DF90CF9071\n:1011B0000C94CD0B0E94DD020E94A2096C197D09DE\n:1011C0008E099F096039714081059105C8F20E941E\n:1011D000A2096B017C01DC2FD1278D2F0E94160202\n:1011E0008C2F0E940F02CD2FCBCF61E085E00E94B3\n:1011F000CD0A61E084E00E94CD0A0E9492010E9423\n:10120000AE020E946D0881110E94A2080C94DD07B5\n:1012100008951F920F920FB60F9211242F933F93B0\n:101220004F935F936F937F938F939F93AF93BF93EE\n:10123000EF93FF93E0910201F09103010995FF9173\n:10124000EF91BF91AF919F918F917F916F915F913E\n:101250004F913F912F910F900FBE0F901F901895B7\n:101260001F920F920FB60F9211242F933F934F931B\n:101270005F936F937F938F939F93AF93BF93EF93FE\n:10128000FF93E0910401F09105010995FF91EF9121\n:10129000BF91AF919F918F917F916F915F914F918E\n:1012A0003F912F910F900FBE0F901F9018950895AA\n:1012B0001F920F920FB60F9211242F933F938F938B\n:1012C0009F93AF93BF938091380290913902A09180\n:1012D0003A02B0913B023091370223E0230F2D37C1\n:1012E00058F50196A11DB11D209337028093380255\n:1012F00090933902A0933A02B0933B0280913C0252\n:1013000090913D02A0913E02B0913F020196A11D35\n:10131000B11D80933C0290933D02A0933E02B09396\n:101320003F02BF91AF919F918F913F912F910F906D\n:101330000FBE0F901F90189526E8230F0296A11D4F\n:10134000B11DD2CF2FB7F894609138027091390255\n:1013500080913A0290913B022FBF08953FB7F894D5\n:1013600080913C0290913D02A0913E02B0913F02DB\n:1013700026B5A89B05C02F3F19F00196A11DB11DF0\n:101380003FBFBA2FA92F982F8827BC01CD01620F2C\n:10139000711D811D911D42E0660F771F881F991FE7\n:1013A0004A95D1F708958F929F92AF92BF92CF92B4\n:1013B000DF92EF92FF926B017C010E94AE094B011C\n:1013C0005C01C114D104E104F104E9F00E94570961\n:1013D0000E94AE09681979098A099B09683E734021\n:1013E0008105910570F321E0C21AD108E108F108E6\n:1013F00088EE880E83E0981EA11CB11CC114D10494\n:10140000E104F10429F7FF90EF90DF90CF90BF90B7\n:10141000AF909F908F900895789484B5826084BD3A\n:1014200084B5816084BD85B5826085BD85B58160E8\n:1014300085BDEEE6F0E0808181608083E1E8F0E048\n:101440001082808182608083808181608083E0E877\n:10145000F0E0808181608083E1EBF0E08081846056\n:101460008083E0EBF0E0808181608083EAE7F0E058\n:1014700080818460808380818260808380818160BC\n:1014800080838081806880831092C10008951F93BB\n:10149000CF93DF93182FEB0161E00E94CD0A2097D4\n:1014A00039F460E0812FDF91CF911F910C94090BEB\n:1014B000CF3FD10511F461E0F5CFE12FF0E0E85422\n:1014C000FF4FE491E33031F140F4E130B1F0E2302C\n:1014D000E1F0C038D1057CF7E4CFE73029F1E830FE\n:1014E00059F1E430B1F780918000806280938000F0\n:1014F000D0938B00C0938A0004C084B5806884BDFB\n:10150000C7BDDF91CF911F91089584B5806284BDDE\n:10151000C8BDF7CF80918000806880938000D09311\n:101520008900C0938800EDCF8091B00080688093DF\n:10153000B000C093B300E5CF8091B000806280938B\n:10154000B000C093B400DDCF833081F028F4813047\n:1015500099F08230A9F008958730A9F08830C9F059\n:101560008430B1F4809180008F7D03C08091800031\n:101570008F7780938000089584B58F7784BD089518\n:1015800084B58F7DFBCF8091B0008F778093B000C2\n:1015900008958091B0008F7DF9CFCF93DF9390E0D5\n:1015A000FC01E453FF4F249180529F4FFC01849132\n:1015B0008823C9F090E0880F991FFC01E85FFE4F77\n:1015C000A591B491FC01E250FF4FC591D4916111F6\n:1015D0000DC09FB7F8948C91209582238C938881BD\n:1015E000282328839FBFDF91CF910895623051F463\n:1015F0009FB7F8943C91822F809583238C93E88148\n:101600002E2BEFCF8FB7F894EC912E2B2C938FBF0E\n:10161000EACF1F93CF93DF93282F30E0F901E854EE\n:10162000FF4F8491F901E453FF4FD491F901E05247\n:10163000FF4FC491CC23A9F0162F81110E94A40A58\n:10164000EC2FF0E0EE0FFF1FE250FF4FA591B49199\n:101650008FB7F894EC91111108C0D095DE23DC937C\n:101660008FBFDF91CF911F910895DE2BF8CFCF93DD\n:10167000DF93282F30E0F901E854FF4F8491F901FE\n:10168000E453FF4FD491F901E052FF4FC491CC23B2\n:10169000A1F081110E94A40AEC2FF0E0EE0FFF1FD1\n:1016A000EC50FF4FA591B491EC91ED2381E090E0D7\n:1016B00009F480E0DF91CF91089580E090E0FACFC7\n:1016C000FC01918D228D892F90E0805C9F4F821BC1\n:1016D00091098F7399270895FC01918D828D981738\n:1016E00031F0828DE80FF11D858D90E008958FEF28\n:1016F0009FEF0895FC01918D828D981761F0A28D66\n:10170000AE0FBF2FB11D5D968C91928D9F5F9F7321\n:10171000928F90E008958FEF9FEF0895FC01538D15\n:10172000448D252F30E0842F90E0821B930B5417BB\n:1017300010F0CF9608950197089586E19DE0892BDA\n:1017400049F080E090E0892B29F00E94160D81116C\n:101750000C9400000895FC01A48DA80FB92FB11DB1\n:10176000A35ABF4F2C91848D90E001968F739927D7\n:10177000848FA689B7892C93A089B1898C918370B5\n:1017800080648C93938D848D981306C00288F389AE\n:10179000E02D80818F7D80830895CF93DF93EC01CE\n:1017A000888D8823B9F0AA89BB89E889F9898C9149\n:1017B00085FD03C0808186FD0DC00FB607FCF7CF05\n:1017C0008C9185FFF2CF808185FFEDCFCE010E9405\n:1017D000AB0BE9CFDF91CF910895EF92FF920F937A\n:1017E0001F93CF93DF93EC0181E0888F9B8D8C8DCD\n:1017F00098131AC0E889F989808185FF15C09FB7C1\n:10180000F894EE89FF896083E889F9898081837083\n:10181000806480839FBF81E090E0DF91CF911F9132\n:101820000F91FF90EF900895F62E0B8D10E00F5F53\n:101830001F4F0F731127E02E8C8D8E110CC00FB629\n:1018400007FCFACFE889F989808185FFF5CFCE01C1\n:101850000E94AB0BF1CFEB8DEC0FFD2FF11DE35A86\n:10186000FF4FF0829FB7F8940B8FEA89FB89808144\n:101870008062CFCFCF92DF92EF92FF921F93CF93F0\n:10188000DF93EC016A017B01122FE889F98982E07C\n:101890008083C11481EED806E104F104A1F060E078\n:1018A00079E08DE390E0A70196010E94180F215086\n:1018B00031094109510956954795379527952115C5\n:1018C00080E1380798F0E889F989108260E874E8C7\n:1018D0008EE190E0A70196010E94180F2150310976\n:1018E000410951095695479537952795EC85FD8512\n:1018F0003083EE85FF852083188EEC89FD89108367\n:10190000EA89FB89808180618083EA89FB89808103\n:1019100088608083EA89FB89808180688083EA8986\n:10192000FB8980818F7D8083DF91CF911F91FF9014\n:10193000EF90DF90CF900895CF93DF93EC01E88193\n:10194000F9810680F781E02D0995EA89FB8980817C\n:101950008F7E8083EA89FB898081877F8083EA8903\n:10196000FB8980818F778083EA89FB8980818F7DE5\n:1019700080838A8D898FDF91CF9108951F920F9276\n:101980000FB60F9211242F938F939F93EF93FF9392\n:10199000E0915002F09151028081E0915602F09165\n:1019A000570282FD1BC09081809159028F5F8F7317\n:1019B00020915A02821741F0E0915902F0E0E05C78\n:1019C000FD4F958F80935902FF91EF919F918F91D9\n:1019D0002F910F900FBE0F901F9018958081F4CF1C\n:1019E0001F920F920FB60F9211242F933F934F9394\n:1019F0005F936F937F938F939F93AF93BF93EF9377\n:101A0000FF9380E492E00E94AB0BFF91EF91BF91B6\n:101A1000AF919F918F917F916F915F914F913F9186\n:101A20002F910F900FBE0F901F90189580E492E0B9\n:101A30000E94600B21E0892B09F420E0822F089599\n:101A4000E0E4F2E01382128288EE93E0A0E0B0E0DE\n:101A500084839583A683B78382E391E09183808317\n:101A600085EC90E09587848784EC90E09787868763\n:101A700080EC90E0918B808B81EC90E0938B828B5B\n:101A800082EC90E0958B848B86EC90E0978B868B34\n:101A9000118E128E138E148E0895AF92BF92CF9234\n:101AA000DF92EF92FF920F931F93CF93DF936C011E\n:101AB0007B018B01040F151FEB015E01AE18BF08FF\n:101AC000C017D10759F06991D601ED91FC910190B1\n:101AD000F081E02DC6010995892B79F7C501DF91C9\n:101AE000CF911F910F91FF90EF90DF90CF90BF901B\n:101AF000AF900895FB0101900020E9F73197AF0105\n:101B0000461B570BDC01ED91FC910280F381E02D27\n:101B10000994EF92FF920F931F93CF93DF938C0161\n:101B20007B01D0E0C0E0F701EC0FFD1F649166235C\n:101B300061F0D801ED91FC910190F081E02DC80198\n:101B40000995892B11F02196EECFCE01DF91CF912F\n:101B50001F910F91FF90EF900895DC01ED91FC91A2\n:101B60000190F081E02D099460E471E00C947A0D0D\n:101B70000F931F93CF93DF93EC010E94890D8C018B\n:101B8000CE010E94B40D800F911FDF91CF911F9164\n:101B90000F9108958F929F92AF92BF92EF92FF9212\n:101BA0000F931F93CF93DF93CDB7DEB7A1970FB6F7\n:101BB000F894DEBF0FBECDBF7C01FA01CB0119A2A4\n:101BC000223008F42AE08E010F5D1F4F822E912CE7\n:101BD000B12CA12CBF01A50194010E94180FF9019D\n:101BE000CA016A300CF5605DD8016E938D01232B1C\n:101BF000242B252B79F790E080E0109721F0BD0190\n:101C0000C7010E947A0DA1960FB6F894DEBF0FBEF1\n:101C1000CDBFDF91CF911F910F91FF90EF90BF90BB\n:101C2000AF909F908F900895695CDECFCF92DF9246\n:101C3000EF92FF920F931F93CF93DF9321153105FE\n:101C400081F4DC01ED91FC910190F081E02D642F95\n:101C5000DF91CF911F910F91FF90EF90DF90CF9088\n:101C600009942A30310501F52AE077FF1DC06A0189\n:101C70007B01EC016DE20E94AD0D8C0144275527DC\n:101C8000BA014C195D096E097F092AE0CE010E9454\n:101C9000CA0D800F911FDF91CF911F910F91FF907F\n:101CA000EF90DF90CF900895DF91CF911F910F912A\n:101CB000FF90EF90DF90CF900C94CA0D9A01AB018A\n:101CC000770F660B770B0C94160E0F931F93CF9321\n:101CD000DF93EC010E945E0E8C01CE010E94B40DD8\n:101CE000800F911FDF91CF911F910F910895813047\n:101CF00039F018F0823051F0089510926E00089576\n:101D000080916F008D7F80936F00089580917000A7\n:101D10008D7F8093700081E08093B0008091B1004E\n:101D2000887F84608093B1001092B3000895CF93B0\n:101D3000C82F80910601C8130DC0E2E1F1E0849143\n:101D40009FEF909306010E94770E60E08C2FCF9159\n:101D50000C94090B8FEFF7CF1F920F920FB60F92D3\n:101D600011242F933F934F935F936F937F938F93A0\n:101D70009F93AF93BF93EF93FF938091E002909175\n:101D8000E102A091E202B091E302892B8A2B8B2B16\n:101D9000D1F19091DD02E091DE02F091DF028081CD\n:101DA000892780838091E0029091E102A091E20274\n:101DB000B091E302181619061A061B069CF48091CE\n:101DC000E0029091E102A091E202B091E30201975A\n:101DD000A109B1098093E0029093E102A093E2028D\n:101DE000B093E302FF91EF91BF91AF919F918F91DB\n:101DF0007F916F915F914F913F912F910F900FBE07\n:101E00000F901F901895809106010E94970EEACFBF\n:101E100008950E940C0A0E94080F0E94F508CDE95F\n:101E2000DBE00E9437082097E1F30E949D0BF9CF79\n:101E3000A1E21A2EAA1BBB1BFD010DC0AA1FBB1FCE\n:101E4000EE1FFF1FA217B307E407F50720F0A21B40\n:101E5000B30BE40BF50B661F771F881F991F1A94AD\n:101E600069F760957095809590959B01AC01BD01D7\n:101E7000CF010895EE0FFF1F0590F491E02D099416\n:101E8000FB01DC018D91019080190110D9F3990BB0\n:101E90000895F999FECF92BD81BDF89A992780B532\n:101EA0000895262FF999FECF1FBA92BD81BD20BD9E\n:101EB0000FB6F894FA9AF99A0FBE01960895F8941D\n:021EC000FFCF52\n:101EC200030008090809FF010500040307020630A0\n:101ED200313233343536373839414243444546008E\n:101EE2004D4D3F005200440051000203060800001D\n:101EF2000000ED0B4D0D8E0BCD0B600B7A0B6C0BB6\n:041F02000D0A0000C4\n:00000001FF\n"},
+  '1e950f': {name: 'ATmega328P', hex: ":100000000C948B000C9409090C9430090C94B300E7\n:100010000C94B3000C94B3000C94B3000C94AC0E8D\n:100020000C94B3000C94B3000C94B3000C94B30084\n:100030000C94B3000C94B3000C94B3000C94B30074\n:100040000C9458090C94B3000C94BE0C0C94F00C56\n:100050000C94B3000C94B3000C94B3000C94B30054\n:100060000C94B3000C94B3002030005020002031D9\n:100070000050200045525220756E6B6E6F776E00F7\n:10008000425945004F4B004F4B004F4B00455252D9\n:1000900020696E76616C696400455252206865780B\n:1000A000004552522073697A6500432000203332A4\n:1000B0003820004D4D3420000000000800020100EF\n:1000C0000003040700000000000000000102040813\n:1000D00010204080010204081020010204081020B2\n:1000E00004040404040404040202020202020303DE\n:1000F0000303030300000000230026002900000082\n:100100000000250028002B0000000000240027002C\n:100110002A000200200D11241FBECFEFD8E0DEBF61\n:10012000CDBF11E0A0E0B1E0E2ECFEE102C005903D\n:100130000D92A434B107D9F722E0A4E4B1E001C0E4\n:100140001D92A43EB207E1F710E0CBE8D0E004C076\n:100150002197FE010E943A0FCA38D107C9F70E94C1\n:10016000090F0C945F0F0C9400000895CF93C82FD3\n:1001700061E770E080E492E00E94890D6C2F70E0EE\n:100180006F5F7F4F4AE050E080E492E00E945E0E95\n:100190006EE670E080E492E0CF910C94B80DCF93BE\n:1001A000C82F6BE670E080E492E00E94890D6C2F0E\n:1001B00070E06F5F7F4F4AE050E080E492E00E9481\n:1001C0005E0E68E670E080E492E0CF910C94B80D8A\n:1001D0006091080270E085E00C94470ADC01ED9123\n:1001E000FC910190F081E02D0994FF920F931F93F1\n:1001F000CF93DF93EC01F62E08811981C8010E948C\n:10020000490FF81621F06F2DC8010E94510FCE0141\n:10021000DF91CF911F910F91FF900895FC019C01F8\n:100220002C5C3F4F8AE59191890FE217F307D9F7CC\n:100230000895CF93DF93CDB7DEB728970FB6F89424\n:10024000DEBF0FBECDBFE4E0F2E083E3DF011D922D\n:100250008A95E9F78DE48093020284E38093030298\n:1002600091E09093040283E08093070220E42093BE\n:10027000080220E52093090290930B0292E09093EC\n:100280000C0280930D0288E0E7E0F1E0DE011196B8\n:1002900001900D928A95E1F7DE011196E2E0F2E01D\n:1002A0002AE232E081E09C91848715869687178642\n:1002B000108A11969C911197818B128A938B148AC4\n:1002C000158A12963A962E173F0769F782E092E058\n:1002D0000E940E018093360228960FB6F894DEBF76\n:1002E0000FBECDBFDF91CF910895CF93DF93EC0187\n:1002F00088818D3491F48981843379F48A818130C5\n:1003000061F48C81803148F48B81823030F4CE01ED\n:100310000E940E0191E02CA9281390E0892FDF9113\n:10032000CF9108950F931F93CF93DF9302E012E0D4\n:10033000D0E0C0E0CE010E94490FF80181938F0107\n:100340002196C533D105B1F782E092E00E94750194\n:10035000811106C0DF91CF911F910F910C9419016B\n:10036000DF91CF911F910F910895EF92FF920F931C\n:100370001F93CF93DF9300D0CDB7DEB782E0E82E96\n:1003800082E0F82E10E000E0F70161917F011A830E\n:100390000983CE0101960E94F5000F5F1F4F0533C0\n:1003A000110591F70F900F90DF91CF911F910F9151\n:1003B000FF90EF900895CF93C62F8F70806C682FB9\n:1003C00070E080E492E00E94EE00CF776C2F70E046\n:1003D00080E492E0CF910C94EE00CF93DF93D62F80\n:1003E000C42F8F70806B682F70E080E492E00E94D1\n:1003F000EE00DF776D2F70E080E492E00E94EE0067\n:10040000CF776C2F70E080E492E0DF91CF910C9475\n:10041000EE00462F682F809106020C94ED018111A9\n:100420000C94E80060E085E00C94090B682F84E0F0\n:100430000C94090B9091070290FF11C0662379F08C\n:100440008093FB01660F6093FA010E94A2096093FA\n:10045000F6017093F7018093F8019093F9010895E4\n:100460000F931F93CF938091FA018823A1F10E94EB\n:10047000A2090091F6011091F7012091F801309145\n:10048000F901601B710B820B930B97FD24C0C09187\n:10049000FA01C17080E00E94160280E00E940F0203\n:1004A000C11106C08091FB018530C9F40E94E800AB\n:1004B0008091FA0181508093FA010E94A2096A5B3F\n:1004C0007F4F8F4F9F4F6093F6017093F70180939A\n:1004D000F8019093F901CF911F910F91089581E058\n:1004E0000E941602E5CFCF92DF92EF92FF921F9308\n:1004F000CF93DF93D82F162FC0E06A01F12CE12CA7\n:10050000C117C1F0D53091F40E94E800C701B601CF\n:100510000E94D30980E00E94160280E00E940F0230\n:10052000C701B6010E94D309CF5FEACF81E00E94E4\n:100530001602ECCFDF91CF911F91FF90EF90DF90EB\n:10054000CF90089580910902843128F02AE0829F9B\n:10055000C0011124089588EC90E00895EF92FF9275\n:100560000F931F93CF93DF930AE211E0CAECD1E01F\n:10057000EE24E394F801F1908F0162E08F2D0E9448\n:10058000CD0A8F2D0E94370B21E0892B09F020E046\n:10059000288329830E94A2096A837B838C839D839D\n:1005A000EA862B96F1E00E321F0721F7DF91CF91FB\n:1005B0001F910F91FF90EF9008954F925F926F926D\n:1005C0007F928F929F92AF92BF92CF92DF92EF92E3\n:1005D000FF920F931F93CF93DF930E94A2096B01A9\n:1005E0007C018AE2A82E81E0B82ECAECD1E010E0AE\n:1005F00001E0F50181915F010E94370B9C0191E0C0\n:100600002115310509F090E08981891729F0998336\n:10061000CA82DB82EC82FD828881891719F14A81C6\n:100620005B816C817D8136014701641A750A860AF7\n:10063000970AB401A301443151056105710590F099\n:100640009883E091C601F091C701232B49F4CE8233\n:10065000DF82E886F9861A86E091C801F091C90127\n:10066000812F099588818823E9F08A8581111AC034\n:100670008E819F81A885B98526013701481A590ABC\n:100680006A0A7B0A0E94A202B0E0A0E0481659065E\n:100690006A067B0638F00A87E091C401F091C50133\n:1006A000812F09951F5F2B96143009F0A2CFDF919F\n:1006B000CF911F910F91FF90EF90DF90CF90BF905F\n:1006C000AF909F908F907F906F905F904F90089524\n:1006D000880F95E0899FF0011124EE5FFD4F81E0C6\n:1006E0009485943009F080E00895CF93C82F0E943C\n:1006F000680381110DC0EC2FEE0FEF5F85E0E89FDE\n:10070000F0011124EE5FFD4F81E09485911101C04D\n:1007100080E0CF91089580910702869581700895B9\n:10072000FF920F931F93CF93DF9300D0CDB7DEB727\n:10073000809300029093010224E630E03A832983FB\n:10074000682FCE0101960E94F500809100029091E1\n:10075000010260E0019709F463E087E40E94090266\n:1007600080910002909101029093FD018093FC0121\n:1007700023E030E0309301012093000183309105A4\n:10078000F9F410E000E0FF24F394812F81700E94BF\n:100790001602812F8F250E940F026BE470E080E02B\n:1007A00090E00E94D3090F5F1F5F1170063069F758\n:1007B0000F900F90DF91CF911F910F91FF900895AF\n:1007C000892B39F084E04EE150E065E00E9473022D\n:1007D000EFCF85E0F8CF60E084E40E94090262E098\n:1007E00085E00E941A0280910002909101028430FB\n:1007F000910549F48091FE019091FF0190930102CF\n:100800008093000208959093FF018093FE0184E09D\n:1008100090E0F4CFCF93DF93982F282F30E085E03E\n:10082000989FD0011124A25FBD4F11968C91119712\n:100830008823B9F08150C4E090FDC5E04C91EFEF02\n:10084000E40FE73008F04FC0D62FF0E0E65DFB4F35\n:100850000C943A0F34043F04490468047A047A047F\n:10086000A20480910602E7CF12966C916093C301B7\n:100870000E94DB016091C30163706F5F08C0139633\n:100880004C91139712966C910E94ED0161E08C2FB0\n:1008900015C0E901C554DE4F988121E09227988365\n:1008A000992381F013964C91139712966C910E94A4\n:1008B000ED01888181110AC085E061E0DF91CF916F\n:1008C0000C941A0214964C911497EFCF84E0F5CF54\n:1008D000662361F014964C91149712966C910E94C5\n:1008E000ED01DD2399F2DF91CF91089513964C919C\n:1008F0001397F3CF12969C91129713963C91292F40\n:10090000391708F4232F931708F4932F3091C3015C\n:10091000321710F0931740F4453009F0292F209337\n:10092000C3016091C301A4CF453029F43917B8F74A\n:1009300021E0230FF4CF231710F49FEF930F909330\n:10094000C301EFCF90910502913021F4DF91CF9157\n:100950000C94EB0340E064E40E94ED0162E097CF69\n:10096000CF93C82F0E946803811105C08C2F0E946D\n:10097000750381110EC08BE0C89FF0011124E6536E\n:10098000FE4F81E0828760E08C2F880FCF910C941E\n:100990000A04CF910895CF93C82F0E94680361E0A5\n:1009A000811111C08C2F0E947503882389F08BE080\n:1009B000C89FF0011124E653FE4F8285811108C0C3\n:1009C00081E0828760E08C2F880FCF910C940A041D\n:1009D000CF910895CF93C82F0E947503882339F0D3\n:1009E0008C2F880F60E08F5FCF910C940A04CF9119\n:1009F000089580910001909101018330910550F498\n:100A0000019798F010920101109200016FE78DE3B9\n:100A10000C940902039789F481E090E0909301011E\n:100A2000809300016FE78CE3F3CF82E090E0909336\n:100A300001018093000160E0F6CF08958230F0F06C\n:100A4000209100023091010224303105A9F4E82FF1\n:100A5000EE0F95E0E99FF0011124EE5FFD4F9485C4\n:100A6000973051F09BE0899FF0011124E653FE4F2F\n:100A700081E082870C94EB030C94B004813079F40C\n:100A800020910002309101022330310541F4909110\n:100A9000CA01911104C08093DF010C94F9040895F8\n:100AA00020910002309101022230310501F138F429\n:100AB0002115310559F02130310599F00895233081\n:100AC0003105F1F024303105C9F0089560E081115D\n:100AD00001C06FE788E40E94090262E085E00C949F\n:100AE0001A0269E0811101C068E085E4F4CF88232F\n:100AF00019F084E360E0EFCF85E3FCCF0C94EB03C7\n:100B0000811114C08091000190910101039741F47B\n:100B100010920101109200016FE78DE30C9409021D\n:100B2000309301012093000160E0F7CF08958230F7\n:100B300010F00C94CB049BE0899FF0011124E65344\n:100B4000FE4F9285911104C091E092870C9450055C\n:100B50000895CF93DF9300D0CDB7DEB7813089F40D\n:100B60008091CA01811108C0809100029091010218\n:100B7000039710F40E94EB030F900F90DF91CF9139\n:100B8000089580910002909101022091D5012223C5\n:100B9000E9F021E02093DF018330910548F40197CB\n:100BA00080F00E948B03882349F083E090E00BC023\n:100BB000039711F760E08DE30E94090290E080E066\n:100BC00002C082E090E00E949003D6CF8130910570\n:100BD00099F1B0F08230910599F0039769F6809110\n:100BE000000190910101009711F0039729F66FE73A\n:100BF0008FE30E94090263E085E00E941A02BCCFE5\n:100C00009093FD018093FC0163E087E40E94090258\n:100C100065E085E00E941A0281E090E09093010275\n:100C20008093000284E690E09A83898361E0CE019C\n:100C300001960E94F500A0CF60E087E40E940902BF\n:100C400065E085E00E941A028091FC019091FD010F\n:100C500062E0029709F060E06093000210920102E6\n:100C600084E690E09A838983E2CF823010F00C947E\n:100C7000EA040C94A9050F931F93809100029091B0\n:100C800001028330910550F4019780F080E00E94CA\n:100C90000F0281E01F910F910C9416028330910591\n:100CA000A9F1049751F01F910F91089580E00E94DF\n:100CB00016021F910F910C94E80080E00E940F0231\n:100CC0000E94A2090091B7011091B8012091B901C9\n:100CD0003091BA01601B710B820B930B643F714022\n:100CE0008105910500F30E94A2096093B7017093FA\n:100CF000B8018093B9019093BA0184E00E94370B48\n:100D000021E0892B09F020E0822FC4CF209100013F\n:100D1000309101012D7F81E0232B09F080E00E94BA\n:100D2000160220910001309101012150310981E02A\n:100D30002230310508F080E01F910F910C940F02D2\n:100D400090ED980F9A3010F4892F08959FE9980F2D\n:100D5000963010F4875508959FEB980F963010F455\n:100D6000875308958FEF0895CF93C82FE82FF0E0B1\n:100D700084E0F595E7958A95E1F7E15FFE4F6081A4\n:100D8000062E000C770B80E492E00E94EE00CF70FC\n:100D9000EC2FF0E0E15FFE4F6081062E000C770B38\n:100DA00080E492E0CF910C94EE0063EB70E080E47D\n:100DB00092E00E94890D4AE050E061E070E080E43A\n:100DC00092E00E945E0E6DEA70E080E492E00E9484\n:100DD000890D4AE050E065E370E080E492E00C9415\n:100DE000650E9F92AF92BF92CF92DF92EF92FF92E9\n:100DF0000F931F93CF93DF93CDB7DEB7E5970FB671\n:100E0000F894DEBF0FBECDBF8C0160E271E00E949E\n:100E1000400F892B21F40E94D50681E0B6C064E220\n:100E200071E0C8010E94400F892BC9F46AEA70E0A2\n:100E300080E492E00E94890D02E012E087E3E82E50\n:100E400082E0F82ED8018D918D010E94B406E01643\n:100E5000F106C1F780E492E00E94B40DDECFF80104\n:100E6000F080F7E5FF1260C0D80111968C918032B6\n:100E700009F05AC0F8013296DF010D900020E9F721\n:100E8000CD018B56910961EA70E08E179F07C9F476\n:100E9000FE0131967F016801FAE6CF0ED11C9E2C2F\n:100EA000AF2CD80112968C910E94A006B82EF801A2\n:100EB00083810E94A006B7FC02C087FF07C069E9D2\n:100EC00070E080E492E00E94B80DA7CFFB2D40E1D6\n:100ED000F40290011124822BD7018D937D010E5FC6\n:100EE0001F4F0C151D05E9F6892D9A2D0E947501DD\n:100EF0006DE870E0882329F385E3E92DFA2DA2E05F\n:100F0000B2E001900D928A95E1F70E94B5016AE87E\n:100F100070E080E492E00E94B80D40E550E062E0AD\n:100F200084E00E94730279CF66E271E0C8010E94FA\n:100F3000400F892B39F40E9419010E94B50167E81E\n:100F400070E0BFCFBCE4FB1212C0F8018181803297\n:100F500071F48281823349F084E048E750E063E035\n:100F60000E94730264E870E0ACCF85E0F6CF68E2DF\n:100F700071E0C8010E94400F892BC9F460E870E05D\n:100F800080E492E00E94B80D80E0E5960FB6F894F8\n:100F9000DEBF0FBECDBFDF91CF911F910F91FF90AC\n:100FA000EF90DF90CF90BF90AF909F900895FF207B\n:100FB00009F433CF64E770E084CFCF9380E492E00C\n:100FC0000E949C0C26E042E15AE760E070E080E479\n:100FD00092E00E943A0CEBEBF1E088E0DF011D9219\n:100FE0008A95E9F70E94AE0280910502813031F5C1\n:100FF0008EE195E09093C9018093C80187E995E05F\n:101000009093C7018093C60185E396E09093C50154\n:101010008093C40184E690E00E94490FC82F843079\n:1010200058F4833021F40E948B03882329F08C2FFD\n:1010300090E0CF910C949003C0E0F9CF80EB94E066\n:101040009093C9018093C8018BEC94E09093C70101\n:101050008093C6018AEE94E09093C5018093C40109\n:101060004CE350E063E084E0CF910C9473020E9463\n:10107000DD028091FA0181110C9430028091050209\n:10108000813011F40C943B06089580E492E00E94B4\n:10109000600B892B01F180E492E00E947A0B8D3085\n:1010A000A1F3E09144018A3041F4F0E0EB5BFE4FA4\n:1010B00010821092440181E00895E13748F491E0F4\n:1010C0009E0F90934401F0E0EB5BFE4F8083DDCFF9\n:1010D00010924401DACF80E00895CF92DF92EF9230\n:1010E000FF92CF9326E040E052EC61E070E080E4B4\n:1010F00092E00E943A0C0E94A2096B017C010E94BE\n:10110000A2096C197D098E099F096C3D7540810506\n:101110009105B0F40E944508C82F882381F360E24E\n:1011200071E085E491E00E94400F892B41F70E9415\n:10113000D5068C2FCF91FF90EF90DF90CF90089540\n:10114000C0E0F7CFCF92DF92EF92FF921F93CF9341\n:10115000DF9386EB90E09093C9018093C8018FECF8\n:1011600090E09093C7018093C60185EB90E0909347\n:10117000C5018093C401C0E0C12CD12C760111E0DF\n:101180000E9445088823B1F085E491E00E94F106B1\n:10119000811110C00E94160280E00E940F0280E4BC\n:1011A00092E0DF91CF911F91FF90EF90DF90CF9071\n:1011B0000C94CD0B0E94DD020E94A2096C197D09DE\n:1011C0008E099F096039714081059105C8F20E941E\n:1011D000A2096B017C01DC2FD1278D2F0E94160202\n:1011E0008C2F0E940F02CD2FCBCF61E085E00E94B3\n:1011F000CD0A61E084E00E94CD0A0E9492010E9423\n:10120000AE020E946D0881110E94A2080C94DD07B5\n:1012100008951F920F920FB60F9211242F933F93B0\n:101220004F935F936F937F938F939F93AF93BF93EE\n:10123000EF93FF93E0910201F09103010995FF9173\n:10124000EF91BF91AF919F918F917F916F915F913E\n:101250004F913F912F910F900FBE0F901F901895B7\n:101260001F920F920FB60F9211242F933F934F931B\n:101270005F936F937F938F939F93AF93BF93EF93FE\n:10128000FF93E0910401F09105010995FF91EF9121\n:10129000BF91AF919F918F917F916F915F914F918E\n:1012A0003F912F910F900FBE0F901F9018950895AA\n:1012B0001F920F920FB60F9211242F933F938F938B\n:1012C0009F93AF93BF938091380290913902A09180\n:1012D0003A02B0913B023091370223E0230F2D37C1\n:1012E00058F50196A11DB11D209337028093380255\n:1012F00090933902A0933A02B0933B0280913C0252\n:1013000090913D02A0913E02B0913F020196A11D35\n:10131000B11D80933C0290933D02A0933E02B09396\n:101320003F02BF91AF919F918F913F912F910F906D\n:101330000FBE0F901F90189526E8230F0296A11D4F\n:10134000B11DD2CF2FB7F894609138027091390255\n:1013500080913A0290913B022FBF08953FB7F894D5\n:1013600080913C0290913D02A0913E02B0913F02DB\n:1013700026B5A89B05C02F3F19F00196A11DB11DF0\n:101380003FBFBA2FA92F982F8827BC01CD01620F2C\n:10139000711D811D911D42E0660F771F881F991FE7\n:1013A0004A95D1F708958F929F92AF92BF92CF92B4\n:1013B000DF92EF92FF926B017C010E94AE094B011C\n:1013C0005C01C114D104E104F104E9F00E94570961\n:1013D0000E94AE09681979098A099B09683E734021\n:1013E0008105910570F321E0C21AD108E108F108E6\n:1013F00088EE880E83E0981EA11CB11CC114D10494\n:10140000E104F10429F7FF90EF90DF90CF90BF90B7\n:10141000AF909F908F900895789484B5826084BD3A\n:1014200084B5816084BD85B5826085BD85B58160E8\n:1014300085BDEEE6F0E0808181608083E1E8F0E048\n:101440001082808182608083808181608083E0E877\n:10145000F0E0808181608083E1EBF0E08081846056\n:101460008083E0EBF0E0808181608083EAE7F0E058\n:1014700080818460808380818260808380818160BC\n:1014800080838081806880831092C10008951F93BB\n:10149000CF93DF93182FEB0161E00E94CD0A2097D4\n:1014A00039F460E0812FDF91CF911F910C94090BEB\n:1014B000CF3FD10511F461E0F5CFE12FF0E0E85422\n:1014C000FF4FE491E33031F140F4E130B1F0E2302C\n:1014D000E1F0C038D1057CF7E4CFE73029F1E830FE\n:1014E00059F1E430B1F780918000806280938000F0\n:1014F000D0938B00C0938A0004C084B5806884BDFB\n:10150000C7BDDF91CF911F91089584B5806284BDDE\n:10151000C8BDF7CF80918000806880938000D09311\n:101520008900C0938800EDCF8091B00080688093DF\n:10153000B000C093B300E5CF8091B000806280938B\n:10154000B000C093B400DDCF833081F028F4813047\n:1015500099F08230A9F008958730A9F08830C9F059\n:101560008430B1F4809180008F7D03C08091800031\n:101570008F7780938000089584B58F7784BD089518\n:1015800084B58F7DFBCF8091B0008F778093B000C2\n:1015900008958091B0008F7DF9CFCF93DF9390E0D5\n:1015A000FC01E453FF4F249180529F4FFC01849132\n:1015B0008823C9F090E0880F991FFC01E85FFE4F77\n:1015C000A591B491FC01E250FF4FC591D4916111F6\n:1015D0000DC09FB7F8948C91209582238C938881BD\n:1015E000282328839FBFDF91CF910895623051F463\n:1015F0009FB7F8943C91822F809583238C93E88148\n:101600002E2BEFCF8FB7F894EC912E2B2C938FBF0E\n:10161000EACF1F93CF93DF93282F30E0F901E854EE\n:10162000FF4F8491F901E453FF4FD491F901E05247\n:10163000FF4FC491CC23A9F0162F81110E94A40A58\n:10164000EC2FF0E0EE0FFF1FE250FF4FA591B49199\n:101650008FB7F894EC91111108C0D095DE23DC937C\n:101660008FBFDF91CF911F910895DE2BF8CFCF93DD\n:10167000DF93282F30E0F901E854FF4F8491F901FE\n:10168000E453FF4FD491F901E052FF4FC491CC23B2\n:10169000A1F081110E94A40AEC2FF0E0EE0FFF1FD1\n:1016A000EC50FF4FA591B491EC91ED2381E090E0D7\n:1016B00009F480E0DF91CF91089580E090E0FACFC7\n:1016C000FC01918D228D892F90E0805C9F4F821BC1\n:1016D00091098F7399270895FC01918D828D981738\n:1016E00031F0828DE80FF11D858D90E008958FEF28\n:1016F0009FEF0895FC01918D828D981761F0A28D66\n:10170000AE0FBF2FB11D5D968C91928D9F5F9F7321\n:10171000928F90E008958FEF9FEF0895FC01538D15\n:10172000448D252F30E0842F90E0821B930B5417BB\n:1017300010F0CF9608950197089586E19DE0892BDA\n:1017400049F080E090E0892B29F00E94160D81116C\n:101750000C9400000895FC01A48DA80FB92FB11DB1\n:10176000A35ABF4F2C91848D90E001968F739927D7\n:10177000848FA689B7892C93A089B1898C918370B5\n:1017800080648C93938D848D981306C00288F389AE\n:10179000E02D80818F7D80830895CF93DF93EC01CE\n:1017A000888D8823B9F0AA89BB89E889F9898C9149\n:1017B00085FD03C0808186FD0DC00FB607FCF7CF05\n:1017C0008C9185FFF2CF808185FFEDCFCE010E9405\n:1017D000AB0BE9CFDF91CF910895EF92FF920F937A\n:1017E0001F93CF93DF93EC0181E0888F9B8D8C8DCD\n:1017F00098131AC0E889F989808185FF15C09FB7C1\n:10180000F894EE89FF896083E889F9898081837083\n:10181000806480839FBF81E090E0DF91CF911F9132\n:101820000F91FF90EF900895F62E0B8D10E00F5F53\n:101830001F4F0F731127E02E8C8D8E110CC00FB629\n:1018400007FCFACFE889F989808185FFF5CFCE01C1\n:101850000E94AB0BF1CFEB8DEC0FFD2FF11DE35A86\n:10186000FF4FF0829FB7F8940B8FEA89FB89808144\n:101870008062CFCFCF92DF92EF92FF921F93CF93F0\n:10188000DF93EC016A017B01122FE889F98982E07C\n:101890008083C11481EED806E104F104A1F060E078\n:1018A00079E08DE390E0A70196010E94180F215086\n:1018B00031094109510956954795379527952115C5\n:1018C00080E1380798F0E889F989108260E874E8C7\n:1018D0008EE190E0A70196010E94180F2150310976\n:1018E000410951095695479537952795EC85FD8512\n:1018F0003083EE85FF852083188EEC89FD89108367\n:10190000EA89FB89808180618083EA89FB89808103\n:1019100088608083EA89FB89808180688083EA8986\n:10192000FB8980818F7D8083DF91CF911F91FF9014\n:10193000EF90DF90CF900895CF93DF93EC01E88193\n:10194000F9810680F781E02D0995EA89FB8980817C\n:101950008F7E8083EA89FB898081877F8083EA8903\n:10196000FB8980818F778083EA89FB8980818F7DE5\n:1019700080838A8D898FDF91CF9108951F920F9276\n:101980000FB60F9211242F938F939F93EF93FF9392\n:10199000E0915002F09151028081E0915602F09165\n:1019A000570282FD1BC09081809159028F5F8F7317\n:1019B00020915A02821741F0E0915902F0E0E05C78\n:1019C000FD4F958F80935902FF91EF919F918F91D9\n:1019D0002F910F900FBE0F901F9018958081F4CF1C\n:1019E0001F920F920FB60F9211242F933F934F9394\n:1019F0005F936F937F938F939F93AF93BF93EF9377\n:101A0000FF9380E492E00E94AB0BFF91EF91BF91B6\n:101A1000AF919F918F917F916F915F914F913F9186\n:101A20002F910F900FBE0F901F90189580E492E0B9\n:101A30000E94600B21E0892B09F420E0822F089599\n:101A4000E0E4F2E01382128288EE93E0A0E0B0E0DE\n:101A500084839583A683B78382E391E09183808317\n:101A600085EC90E09587848784EC90E09787868763\n:101A700080EC90E0918B808B81EC90E0938B828B5B\n:101A800082EC90E0958B848B86EC90E0978B868B34\n:101A9000118E128E138E148E0895AF92BF92CF9234\n:101AA000DF92EF92FF920F931F93CF93DF936C011E\n:101AB0007B018B01040F151FEB015E01AE18BF08FF\n:101AC000C017D10759F06991D601ED91FC910190B1\n:101AD000F081E02DC6010995892B79F7C501DF91C9\n:101AE000CF911F910F91FF90EF90DF90CF90BF901B\n:101AF000AF900895FB0101900020E9F73197AF0105\n:101B0000461B570BDC01ED91FC910280F381E02D27\n:101B10000994EF92FF920F931F93CF93DF938C0161\n:101B20007B01D0E0C0E0F701EC0FFD1F649166235C\n:101B300061F0D801ED91FC910190F081E02DC80198\n:101B40000995892B11F02196EECFCE01DF91CF912F\n:101B50001F910F91FF90EF900895DC01ED91FC91A2\n:101B60000190F081E02D099460E471E00C947A0D0D\n:101B70000F931F93CF93DF93EC010E94890D8C018B\n:101B8000CE010E94B40D800F911FDF91CF911F9164\n:101B90000F9108958F929F92AF92BF92EF92FF9212\n:101BA0000F931F93CF93DF93CDB7DEB7A1970FB6F7\n:101BB000F894DEBF0FBECDBF7C01FA01CB0119A2A4\n:101BC000223008F42AE08E010F5D1F4F822E912CE7\n:101BD000B12CA12CBF01A50194010E94180FF9019D\n:101BE000CA016A300CF5605DD8016E938D01232B1C\n:101BF000242B252B79F790E080E0109721F0BD0190\n:101C0000C7010E947A0DA1960FB6F894DEBF0FBEF1\n:101C1000CDBFDF91CF911F910F91FF90EF90BF90BB\n:101C2000AF909F908F900895695CDECFCF92DF9246\n:101C3000EF92FF920F931F93CF93DF9321153105FE\n:101C400081F4DC01ED91FC910190F081E02D642F95\n:101C5000DF91CF911F910F91FF90EF90DF90CF9088\n:101C600009942A30310501F52AE077FF1DC06A0189\n:101C70007B01EC016DE20E94AD0D8C0144275527DC\n:101C8000BA014C195D096E097F092AE0CE010E9454\n:101C9000CA0D800F911FDF91CF911F910F91FF907F\n:101CA000EF90DF90CF900895DF91CF911F910F912A\n:101CB000FF90EF90DF90CF900C94CA0D9A01AB018A\n:101CC000770F660B770B0C94160E0F931F93CF9321\n:101CD000DF93EC010E945E0E8C01CE010E94B40DD8\n:101CE000800F911FDF91CF911F910F910895813047\n:101CF00039F018F0823051F0089510926E00089576\n:101D000080916F008D7F80936F00089580917000A7\n:101D10008D7F8093700081E08093B0008091B1004E\n:101D2000887F84608093B1001092B3000895CF93B0\n:101D3000C82F80910601C8130DC0E2E1F1E0849143\n:101D40009FEF909306010E94770E60E08C2FCF9159\n:101D50000C94090B8FEFF7CF1F920F920FB60F92D3\n:101D600011242F933F934F935F936F937F938F93A0\n:101D70009F93AF93BF93EF93FF938091E002909175\n:101D8000E102A091E202B091E302892B8A2B8B2B16\n:101D9000D1F19091DD02E091DE02F091DF028081CD\n:101DA000892780838091E0029091E102A091E20274\n:101DB000B091E302181619061A061B069CF48091CE\n:101DC000E0029091E102A091E202B091E30201975A\n:101DD000A109B1098093E0029093E102A093E2028D\n:101DE000B093E302FF91EF91BF91AF919F918F91DB\n:101DF0007F916F915F914F913F912F910F900FBE07\n:101E00000F901F901895809106010E94970EEACFBF\n:101E100008950E940C0A0E94080F0E94F508CDE95F\n:101E2000DBE00E9437082097E1F30E949D0BF9CF79\n:101E3000A1E21A2EAA1BBB1BFD010DC0AA1FBB1FCE\n:101E4000EE1FFF1FA217B307E407F50720F0A21B40\n:101E5000B30BE40BF50B661F771F881F991F1A94AD\n:101E600069F760957095809590959B01AC01BD01D7\n:101E7000CF010895EE0FFF1F0590F491E02D099416\n:101E8000FB01DC018D91019080190110D9F3990BB0\n:101E90000895F999FECF92BD81BDF89A992780B532\n:101EA0000895262FF999FECF1FBA92BD81BD20BD9E\n:101EB0000FB6F894FA9AF99A0FBE01960895F8941D\n:021EC000FFCF52\n:101EC200030008090809FF010500040307020630A0\n:101ED200313233343536373839414243444546008E\n:101EE2004D4D3F005200440051000203060800001D\n:101EF2000000ED0B4D0D8E0BCD0B600B7A0B6C0BB6\n:041F02000D0A0000C4\n:00000001FF\n"},
+};
+
+function parseIntelHex(text) {
+  const mem = new Uint8Array(32768).fill(0xff); let top = 0, base = 0;
+  for (const raw of text.split(/\r?\n/)) {
+    const l = raw.trim(); if (!l) continue;
+    if (l[0] !== ':') throw new Error('bad hex file');
+    const b = unhex(l.slice(1)), n = b[0], addr = (b[1] << 8) | b[2], type = b[3];
+    let sum = 0; for (const x of b) sum += x; if ((sum & 255) !== 0) throw new Error('hex checksum');
+    if (type === 0) { mem.set(b.slice(4, 4 + n), base + addr); top = Math.max(top, base + addr + n); }
+    else if (type === 2) base = ((b[4] << 8) | b[5]) << 4;
+    else if (type === 1) break;
+  }
+  return mem.slice(0, top);
+}
+
+class Stk500 {
+  constructor(port) { this.port = port; this.q = []; this.wait = null; }
+  async open(baud) {
+    await this.port.open({baudRate: baud, bufferSize: 4096});
+    this.writer = this.port.writable.getWriter();
+    this.reader = this.port.readable.getReader();
+    this.loop = (async () => {
+      try { for (;;) { const {value, done} = await this.reader.read(); if (done) break; for (const x of value) this.q.push(x); if (this.wait) this.wait(); } }
+      catch (e) {}
+    })();
+  }
+  async close() {
+    try { await this.reader.cancel(); } catch (e) {}
+    try { await this.loop; } catch (e) {}
+    try { this.reader.releaseLock(); } catch (e) {}
+    try { this.writer.releaseLock(); } catch (e) {}
+    try { await this.port.close(); } catch (e) {}
+  }
+  async read(n, ms) {
+    const end = Date.now() + ms;
+    while (this.q.length < n) {
+      const left = end - Date.now(); if (left <= 0) throw new Error('timeout');
+      await new Promise(r => { this.wait = r; setTimeout(r, Math.min(left, 50)); });
+    }
+    return this.q.splice(0, n);
+  }
+  async cmd(bytes, replyLen = 0, ms = 500) {
+    this.q.length = 0;
+    await this.writer.write(new Uint8Array([...bytes, 0x20]));
+    const r = await this.read(replyLen + 2, ms);
+    if (r[0] !== 0x14 || r[r.length - 1] !== 0x10) throw new Error('bootloader said ' + hex(r));
+    return r.slice(1, -1);
+  }
+  async sync() {
+    for (let i = 0; i < 8; i++) {
+      try {
+        await this.cmd([0x30], 0, 200);
+        // Answers to earlier attempts may still be on their way: let them arrive, drop them, sync once more
+        await sleep(150); this.q.length = 0;
+        await this.cmd([0x30], 0, 300);
+        await sleep(30); this.q.length = 0;
+        return true;
+      } catch (e) { await sleep(30); }
+    }
+    return false;
+  }
+}
+
+async function flash() {
+  let port;
+  if (pedal.connected || pedal.port) { port = pedal.port; await pedal.close(); pedal.port = null; status('Not connected'); updateButtons(); }
+  try { port = port || await navigator.serial.requestPort(); } catch (e) { return; }
+  $('btnFlash').disabled = $('btnConnect').disabled = true;
+  const prog = $('flashProgress'); prog.hidden = false; prog.value = 0;
+  msg('flashMsg', 'Looking for the Arduino bootloader…');
+  let stk = null, done = false;
+  try {
+    // Nano with new bootloader: 115200, old Nano / Pro Mini 328P: 57600, Nano / Pro Mini 168: 19200
+    for (const baud of [115200, 57600, 19200]) {
+      stk = new Stk500(port);
+      await stk.open(baud);
+      await resetBoard(port);
+      await sleep(baud === 19200 ? 200 : 60);
+      if (await stk.sync()) break;
+      await stk.close(); stk = null;
+    }
+    if (!stk) throw new Error('No bootloader answered. Check the cable and that this is the Arduino\'s port, then try again.');
+    const sig = hex(await stk.cmd([0x75], 3)).toLowerCase();
+    const fw = FIRMWARE[sig];
+    if (!fw) throw new Error('This chip (signature ' + sig + ') is not an ATmega168 or ATmega328P.');
+    const image = parseIntelHex(fw.hex);
+    msg('flashMsg', `Installing on ${fw.name}…`);
+    await stk.cmd([0x50]);                                   // enter programming mode
+    const PAGE = 128, pages = Math.ceil(image.length / PAGE);
+    for (let p = 0; p < pages; p++) {
+      const addr = p * PAGE, data = new Uint8Array(PAGE).fill(0xff);
+      data.set(image.slice(addr, addr + PAGE));
+      await stk.cmd([0x55, (addr >> 1) & 255, (addr >> 9) & 255]);       // word address
+      await stk.cmd([0x64, 0, PAGE, 0x46, ...data], 0, 1000);           // program flash page
+      prog.value = (p + 1) / pages * 70;
+    }
+    msg('flashMsg', 'Checking…');
+    for (let p = 0; p < pages; p++) {
+      const addr = p * PAGE;
+      await stk.cmd([0x55, (addr >> 1) & 255, (addr >> 9) & 255]);
+      const got = await stk.cmd([0x74, 0, PAGE, 0x46], PAGE, 1000);
+      const want = image.slice(addr, addr + PAGE);
+      for (let i = 0; i < want.length; i++) if (got[i] !== want[i]) throw new Error('Check failed at byte ' + (addr + i) + '. Please try again.');
+      prog.value = 70 + (p + 1) / pages * 30;
+    }
+    await stk.cmd([0x51]);                                   // leave programming mode, start the firmware
+    done = true;
+    msg('flashMsg', `Firmware installed on the ${fw.name} ✓ Click “Connect pedal” to set it up.`, 'ok');
+  } catch (e) {
+    msg('flashMsg', e.message.startsWith('timeout') || e.message.startsWith('bootloader') ? 'Installing failed (' + e.message + '). Unplug the USB cable, plug it in again and retry.' : e.message, 'err');
+  }
+  if (stk) await stk.close();
+  pedal.port = port;           // remember the port for "Connect pedal"
+  if (!done) pedal.port = null;
+  $('btnFlash').disabled = $('btnConnect').disabled = false;
+  setTimeout(() => prog.hidden = true, done ? 3000 : 0);
+}
+$('btnFlash').onclick = flash;
+
+// ------------------------------------------------------------ start
+if (!('serial' in navigator)) { $('noSerial').classList.add('show'); $('btnConnect').disabled = true; }
+else navigator.serial.addEventListener?.('disconnect', e => { if (e.target === pedal.port && pedal.connected) { pedal.close(); lost(); } });
+window.addEventListener('beforeunload', e => { if (state.dirty && pedal.connected) { e.preventDefault(); e.returnValue = ''; } });
+window.__mm = {state, encode, decode, pedal, renderAll, CHOICES};   // for tests and the curious
+renderAll(); updateButtons();
+</script>
+</body>
+</html>
