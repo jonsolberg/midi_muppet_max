@@ -51,16 +51,23 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 const simQuery = async (c, prefix) => { while (busy) await sleep(2); busy = true; try { const o = await simCmd(c, l => l.startsWith(prefix)); return o[o.length - 1].slice(prefix.length); } finally { busy = false; } };
 
 // ---------------------------------------------------------------- fake Web Serial
-const FAKE_SERIAL = (firefox) => {
+const FAKE_SERIAL = (firefox, dead) => {
   // firefox: like Firefox, end the incoming stream when the line glitches (port opened, Arduino
   // restarted) and offer a new port.readable, which the editor has to pick up.
   let rx = null;
   const port = {
     readable: null, writable: null, _dtrLow: false,
-    _newStream() { this.readable = new ReadableStream({start(c) { rx = c; }, cancel() { rx = null; }}); },
+    _newStream() {
+      if (dead) {   // like Firefox with a CH340 on Windows: every stream is already finished
+        Object.defineProperty(this, 'readable', {configurable: true, get: () => this._open ? new ReadableStream({start(c) { c.close(); }}) : null});
+        return;
+      }
+      this.readable = new ReadableStream({start(c) { rx = c; }, cancel() { rx = null; }});
+    },
     _glitch() { if (!firefox || !this.readable) return; setTimeout(() => { try { rx && rx.close(); } catch (e) {} this._newStream(); }, 5); },
     async open(o) {
-      if (this.readable) throw new Error('already open');
+      if (this._open) throw new Error('already open');
+      this._open = true;
       this._newStream();
       this.writable = new WritableStream({write(chunk) { window.__simWrite(Array.from(chunk)); }});
       await window.__simOpen(true, o.baudRate);  // opening a port pulses DTR: the Arduino restarts
@@ -68,7 +75,9 @@ const FAKE_SERIAL = (firefox) => {
     },
     async close() {
       try { rx && rx.close(); } catch (e) {}
-      rx = null; this.readable = this.writable = null;
+      this._open = false;
+      if (!dead) this.readable = null;
+      rx = null; this.writable = null;
       await window.__simOpen(false);
     },
     async setSignals(s) {
@@ -100,11 +109,21 @@ async function waitText(sel, re, ms) {
   await page.exposeFunction('__simWrite', bytes => { pending.push('sendhex ' + Buffer.from(bytes).toString('hex')); });
   await page.exposeFunction('__simReset', () => { pending.push('reset'); });
   await page.exposeFunction('__simOpen', (open, baud) => { portOpen = open; if (open) { pending.push('baud ' + baud); pending.push('reset'); } });
-  await page.evaluateOnNewDocument(FAKE_SERIAL, !!process.env.FIREFOX_LIKE);
+  await page.evaluateOnNewDocument(FAKE_SERIAL, !!process.env.FIREFOX_LIKE, !!process.env.FIREFOX_DEAD);
   await page.setViewport({width: 1280, height: 1000});
   await page.goto(EDITOR);
   await page.screenshot({path: `${SHOTS}/${tag}-1-start.png`, fullPage: true});
   check('page loads without script errors', errors.length === 0, errors.join('; '));
+
+  if (process.env.FIREFOX_DEAD) {     // only check that the editor gives up with a clear message
+    const t0 = Date.now();
+    await page.click('#btnConnect');
+    const m = await waitText('#pedalMsg', /CH340|did not answer/, 20000);
+    check('dead stream: clear message about Firefox and CH340: ' + m, /CH340/.test(m));
+    check('dead stream: gives up within 6 s (' + ((Date.now() - t0) / 1000).toFixed(1) + ' s)', Date.now() - t0 < 6000);
+    await browser.close(); clearInterval(timer); sim.stdin.write('quit\n');
+    console.log(`\n${tag}: ${failures} failures`); process.exit(failures ? 1 : 0);
+  }
 
   // 1. install the firmware through the bootloader
   if (bootHex) {

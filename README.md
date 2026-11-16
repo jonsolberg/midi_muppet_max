@@ -22,7 +22,9 @@ The editor also works with the **original two button [MIDI Muppet HX](https://gi
 
 ![The editor with the original two button MIDI Muppet HX](images/editor-original.png)
 
-The editor runs in Chrome, Edge or Opera on a computer (it uses Web Serial to talk to the Arduino):
+The editor runs in Chrome, Edge or Opera on a computer (it uses Web Serial to talk to the Arduino).
+Firefox has Web Serial since version 151, but on Windows it can't yet receive data from boards with a CH340
+USB chip (most Nano clones): the read stream ends at once, again and again. The editor says so when it happens.
 
 1. Connect the Arduino in the pedal to the computer with a USB cable.
 2. First time: choose your Arduino (*Nano / Pro Mini 5 V* or *Pro Mini 3.3 V*), click **Install firmware**

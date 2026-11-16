@@ -102,6 +102,7 @@ kbd{font:600 .8rem ui-monospace,monospace;background:var(--chip);border:1px soli
     <button id="btnDisconnect" hidden>Disconnect</button>
   </div>
 </header>
+<div class="wrapn"><div class="notice warn" id="firefoxNote">Firefox can't yet receive data from Arduinos with a <b>CH340</b> USB chip (most Nano clones) on Windows, so connecting and installing fail there. Please use <b>Chrome, Edge or Opera</b> for those boards.</div></div>
 <div class="wrapn"><div class="notice warn" id="noSerial">Connecting to the pedal needs <b>Chrome, Edge or Opera on a computer</b> (Web Serial). You can still plan a setup here and export it to a file.</div></div>
 
 <main>
@@ -559,8 +560,10 @@ function log(s) {
   console.log('[MM]', s);
 }
 // Diagnostics: what actually happens on the port (limited, so the log stays readable)
-let rxLogged = 0, txLogged = 0;
+let rxLogged = 0, txLogged = 0, rxTotal = 0, streamDead = false;
+const DEAD_STREAM_MSG = 'Your browser stops receiving from this USB port – a known problem in Firefox with CH340 USB chips (most Nano clones). Please use Chrome, Edge or Opera.';
 function rxLog(v) {
+  rxTotal += v.length;
   if (rxLogged < 12) { rxLogged++; log('serial: received ' + v.length + ' bytes: ' + hex(v.slice(0, 24)) + (v.length > 24 ? '…' : '')); }
 }
 async function txLog(promise, n) {
@@ -594,7 +597,11 @@ const pedal = {
         this.reader = this.port.readable.getReader();
         for (;;) {
           const {value, done} = await this.reader.read();
-          if (done) { if (ended++ < 5) log('serial: read stream ended, reading on'); break; }
+          if (done) {
+            if (ended++ < 5) log('serial: read stream ended, reading on');
+            if (ended >= 10 && !rxTotal) { streamDead = true; log('serial: the browser keeps ending the stream without any data – giving up'); this.closing = true; }
+            break;
+          }
           rxLog(value);
           this.buf += dec.decode(value, {stream: true});
           let i;
@@ -666,7 +673,7 @@ async function connect() {
     let mhzPref = '16'; try { mhzPref = localStorage.getItem('mm-mhz') || $('board').value; } catch (e) {}
     const speeds = mhzPref === '8' ? [57600, 115200] : [115200, 57600];
     let line = null;
-    rxLogged = txLogged = 0;
+    rxLogged = txLogged = rxTotal = 0; streamDead = false;
     log('connect: ' + JSON.stringify(port.getInfo ? port.getInfo() : {}) + ', speeds ' + speeds.join('/'));
     for (const baud of speeds) {
       log('connect: open at ' + baud + ' baud, restart the Arduino, say hello');
@@ -678,6 +685,7 @@ async function connect() {
       hello.then(() => answered = true, () => {});
       (async () => { for (let i = 0; i < 36 && !answered && pedal.writer; i++) { try { await pedal.send('MM?'); } catch (e) { break; } await sleep(110); } })();
       try { line = await hello; break; } catch (e) { log('connect: no answer at ' + baud); await pedal.close(); pedal.port = port; }
+      if (streamDead) throw new Error(DEAD_STREAM_MSG);
     }
     if (!line) throw new Error('timeout');
     const [, fw, mcu, size, mhz] = line.split(' ');
@@ -697,7 +705,7 @@ async function connect() {
     log('connect failed: ' + (e && e.message));
     await pedal.close(); pedal.port = null;
     status('Not connected', 'err');
-    msg('pedalMsg', e.message === 'timeout'
+    msg('pedalMsg', e.message === DEAD_STREAM_MSG ? DEAD_STREAM_MSG : e.message === 'timeout'
       ? 'The pedal did not answer. If it still runs an old sketch, click “Install firmware” first. Otherwise unplug the USB cable, plug it in again and retry.'
       : 'Could not connect: ' + e.message, 'err');
     updateButtons();
@@ -798,7 +806,11 @@ class Stk500 {
           this.reader = this.port.readable.getReader();
           for (;;) {
             const {value, done} = await this.reader.read();
-            if (done) { if (ended++ < 5) log('serial: read stream ended, reading on'); break; }
+            if (done) {
+              if (ended++ < 5) log('serial: read stream ended, reading on');
+              if (ended >= 10 && !rxTotal) { streamDead = true; log('serial: the browser keeps ending the stream without any data – giving up'); this.closing = true; }
+              break;
+            }
             rxLog(value); for (const x of value) this.q.push(x); if (this.wait) this.wait();
           }
         } catch (e) { if (ended++ < 5) log('serial: read error, reading on: ' + e.message); }
@@ -866,7 +878,7 @@ async function flash() {
   let stk = null, done = false;
   try {
     // Nano with new bootloader: 115200, old Nano / Pro Mini 328P: 57600, Nano / Pro Mini 168: 19200
-    rxLogged = txLogged = 0;
+    rxLogged = txLogged = rxTotal = 0; streamDead = false;
     log('install: board ' + $('board').value + ' MHz, port ' + JSON.stringify(port.getInfo ? port.getInfo() : {}));
     // Try the speed that worked last time first (Nano: 115200 new / 57600 old bootloader, ATmega168: 19200)
     let bauds = [115200, 57600, 19200];
@@ -878,6 +890,7 @@ async function flash() {
       await stk.open(baud);
       if (await stk.sync(baud)) { bootBaud = baud; break; }
       await stk.close(); stk = null;
+      if (streamDead) throw new Error(DEAD_STREAM_MSG);
     }
     if (!stk) throw new Error('No bootloader answered. Check the cable and that this is the Arduino\'s port, then try again.');
     const sig = hex(await stk.cmd([0x75], 3)).toLowerCase();
@@ -914,7 +927,7 @@ async function flash() {
     msg('flashMsg', `Firmware installed on the ${fw.name} (${mhz} MHz) ✓ Click “Connect pedal” to set it up.`, 'ok');
   } catch (e) {
     log('install failed: ' + e.message);
-    msg('flashMsg', e.message.startsWith('timeout') || e.message.startsWith('bootloader') ? 'Installing failed (' + e.message + '). Unplug the USB cable, plug it in again and retry. If it fails again, copy the technical log below and send it.' : e.message, 'err');
+    msg('flashMsg', e.message === DEAD_STREAM_MSG ? DEAD_STREAM_MSG : e.message.startsWith('timeout') || e.message.startsWith('bootloader') ? 'Installing failed (' + e.message + '). Unplug the USB cable, plug it in again and retry. If it fails again, copy the technical log below and send it.' : e.message, 'err');
   }
   if (stk) await stk.close();
   pedal.port = port;           // remember the port for "Connect pedal"
@@ -933,6 +946,7 @@ $('btnCopyLog').onclick = async () => {
 // ------------------------------------------------------------ start
 try { const m = localStorage.getItem('mm-mhz'); if (m) $('board').value = m; } catch (e) {}
 if (!('serial' in navigator)) { $('noSerial').classList.add('show'); $('btnConnect').disabled = true; }
+if (/Firefox\//.test(navigator.userAgent)) $('firefoxNote').classList.add('show');
 else navigator.serial.addEventListener?.('disconnect', e => { if (e.target === pedal.port && pedal.connected) { pedal.close(); lost(); } });
 window.addEventListener('beforeunload', e => { if (state.dirty && pedal.connected) { e.preventDefault(); e.returnValue = ''; } });
 window.__mm = {state, encode, decode, pedal, renderAll, CHOICES};   // for tests and the curious
