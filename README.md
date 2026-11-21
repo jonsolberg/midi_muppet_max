@@ -1,4 +1,4 @@
-# MIDI Muppet Multi 4btn
+# MIDI Muppet Max
 
 A four button Arduino MIDI foot switch that you set up from your browser. It controls the Line 6 HX Stomp,
 the BOSS RC-500, the Wampler Terraform or any other MIDI device, and it is based on
