@@ -297,7 +297,7 @@ const TF_FX = ['Auto Wah', 'Envelope Filter', 'Flanger', 'Phaser', 'Uni-Vibe', '
 /** The pedals in the "Pedal" list: Any MIDI device first, then alphabetical. */
 const DEVICES = [
   {id: 'any', name: 'Any MIDI device'},
-  {id: 'md200', name: 'BOSS MD-200', note: 'Turn on CC IN (CCI) on the MD-200. Its CC numbers are set in the pedal\'s menu (RTC, DPC, ELC, P1C–P3C, SWC, MEC, C1C, C2C, EPC, EFC): set them to the numbers shown here, or pick Any MIDI device to send others. 200-series pedals need both 0 and 127, which the MIDI Muppet sends. Program 1 is MANUAL, programs 2–128 are memories 1–127.'},
+  {id: 'md200', name: 'BOSS MD-200', note: 'Turn on CC IN (CCI) on the MD-200. Its CC numbers are set in the pedal\'s menu (RTC, DPC, ELC, P1C–P3C, SWC, MEC, C1C, C2C, EPC, EFC): set them to the numbers shown here, or pick Any MIDI device to send others. 200-series pedals need both 0 and 127, which the MIDI Muppet Max sends. Program 1 is MANUAL, programs 2–128 are memories 1–127.'},
   {id: 'rc500', name: 'BOSS RC-500', note: 'Program Change selects a memory. Everything else goes through ASSIGN: in the RC-500 memory set ASSIGN ON, SOURCE = the CC number shown (CC 1–31 or 64–95), SRC MODE = MOMENT and TARGET = the function shown. ASSIGN settings are saved per memory.'},
   {id: 'hx', name: 'Line 6 HX Stomp'},
   {id: 'iridium', name: 'Strymon Iridium', note: '300 presets in three banks – the MIDI Muppet Max sends the bank (CC 0) before the program. Program 0 is the Favorite, bank 0 program 127 is Manual mode. Set the Iridium\'s MIDI channel to match.'},
