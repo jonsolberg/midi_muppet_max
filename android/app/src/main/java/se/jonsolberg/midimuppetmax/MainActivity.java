@@ -39,6 +39,7 @@ public class MainActivity extends Activity {
         super.onCreate(savedInstanceState);
         web = new WebView(this);
         setContentView(web);
+        if (savedInstanceState == null) UpdateChecker.start(this);
 
         WebSettings s = web.getSettings();
         s.setJavaScriptEnabled(true);
