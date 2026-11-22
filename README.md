@@ -1,11 +1,16 @@
 # MIDI Muppet Max
 
-An Arduino MIDI foot switch that you set up from your browser, in two versions: **MIDI Muppet Max** (four
+An Arduino MIDI foot switch that you set up from your browser or Android phone, in two versions: **MIDI Muppet Max** (four
 buttons) and **MIDI Muppet HX** (two buttons). Pick your pedal, pick a command for every switch and save it
 over USB. Based on [MIDI Muppet HX](https://github.com/mattzzw/midi_muppet_hx_2btn) by Matthias Wientapper.
 
-**[Open the web editor](https://jonsolberg.github.io/midi_muppet_max/)**: install the firmware, choose what
-every switch does and save it to the pedal. No Arduino IDE needed.
+**[Open the web editor](https://jonsolberg.github.io/midi_muppet_max/)** ·
+**[Download the Android app](https://github.com/jonsolberg/midi_muppet_max/releases/latest/download/MidiMuppetMax.apk)** ·
+[all releases](https://github.com/jonsolberg/midi_muppet_max/releases)
+
+Install the firmware, choose what every switch does and save it to the pedal – in the browser, or in the Android
+app with a USB OTG cable. No Arduino IDE needed. To install the APK, allow your browser or file manager to
+*install unknown apps* when Android asks.
 
 <p>
 <img src="images/pedal_top.jpg" alt="MIDI Muppet Max, top" width="280">
@@ -31,9 +36,15 @@ every switch does and save it to the pedal. No Arduino IDE needed.
 Setups can also be exported to a file and imported again. If the pedal has older firmware, the editor
 suggests an update (firmware 5 adds bank + program, used by the Strymon pedals).
 
-### Browsers
+### Browsers and the Android app
 
 - **Computer:** Chrome, Edge or Opera. The editor uses Web Serial to talk to the Arduino.
+- **Android app:** the same editor as an app, so no browser is needed. Connect the pedal with a USB OTG cable; the
+  app talks to the Arduino's USB chip (CH340, FTDI, CP210x or CDC-ACM) through Android's own USB support, and
+  plugging in the pedal can open the app directly. Setups are exported and imported as files, like in the browser.
+
+  <img src="images/android-1.png" width="240" alt="The app: the pedal and its switches"> <img src="images/android-2.png" width="240" alt="The app: choosing a pedal and a command for a switch">
+
 - **Android phone:** Chrome and a USB OTG cable. Web Serial on Android only lists Bluetooth devices, so the
   editor drives the USB chip itself through WebUSB (CH340, FTDI, CP210x and CDC-ACM boards).
 - **Firefox** has Web Serial since version 151, but on Windows it can't yet receive data from boards with a
@@ -188,6 +199,13 @@ Default mapping (PC 0 = preset 1):
 
 ## For developers
 
+### The Android app
+
+`android/` is a small app around the same editor page (`editor/index.html`, copied in at build time). A WebView
+has neither Web Serial nor WebUSB, so the app gives the editor a `navigator.usb` of its own
+(`assets/android-usb.js`), backed by Android's USB host API (`UsbBridge.java`). The editor's USB serial drivers
+run unchanged. The release workflow builds the APK and adds it to the release.
+
 ### How the editor talks to the pedal
 
 After power-up the universal firmware listens on USB at 115200 baud (57600 on 8 MHz boards) for 1.5 seconds.
@@ -202,7 +220,9 @@ plain text and is described at the top of the sketch.
 - `test_firmware.py` checks the setup protocol, every action type, short/long press timing, all
   HX Stomp modes, the two switch mode and the LED options on ATmega168 and ATmega328P, at 16 and 8 MHz.
 - `e2e.js` opens the editor in headless Chrome with a simulated serial port (or, with `USB_CH340=1`, a
-  simulated CH340 over WebUSB, as on Android) wired to the simulated pedal. It installs the firmware through
+  simulated CH340 over WebUSB, as on Android) wired to the simulated pedal. With `ANDROID_APP=1` the same CH340 sits behind a
+  simulated Android app bridge (`window.AndroidUsb`), so the app's USB layer
+  (`android/app/src/main/assets/android-usb.js`) is tested with the real editor. It installs the firmware through
   the real ATmega168 Nano bootloader and the 3.3 V Pro Mini bootloader, then connects, edits, saves and checks
   the pedal's EEPROM and MIDI output.
 
