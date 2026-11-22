@@ -24,11 +24,11 @@ jobs:
           TAG="v$V"
           mkdir out
           cp firmware/*.hex out/
-          cp editor/index.html out/midi-muppet-editor.html
+          cp editor/index.html out/midi-muppet-max-editor.html
           if gh release view "$TAG" >/dev/null 2>&1; then
             gh release upload "$TAG" out/* --clobber
           else
             gh release create "$TAG" out/* --target "$GITHUB_SHA" --latest \
               --title "MIDI Muppet Max $V" \
-              --notes "Firmware 5 and the web editor. Open the editor at https://jonsolberg.github.io/midi_muppet_max/ – it installs the firmware for you. The .hex files are for flashing by hand; midi-muppet-editor.html is the editor to use offline."
+              --notes "Firmware 5 and the web editor. Open the editor at https://jonsolberg.github.io/midi_muppet_max/ – it installs the firmware for you. The .hex files are for flashing by hand; midi-muppet-max-editor.html is the editor to use offline."
           fi

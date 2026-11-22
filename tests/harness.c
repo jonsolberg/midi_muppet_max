@@ -1,5 +1,5 @@
-// Part of MIDI Muppet 4btn – Copyright (C) 2026 Jon Solberg – GPL v3 or later, see LICENSE.
-// Runs the MIDI Muppet firmware in simavr and lets a script drive it over stdin/stdout.
+// Part of MIDI Muppet Max – Copyright (C) 2026 Jon Solberg – GPL v3 or later, see LICENSE.
+// Runs the MIDI Muppet Max firmware in simavr and lets a script drive it over stdin/stdout.
 // Commands (one per line):
 //   run <ms>          run simulated time; prints "TX <hex>" for UART output, then "DONE <ms>"
 //   send <text>       queue text + "\n" for the UART input (paced at ~115200 baud)

@@ -1,4 +1,4 @@
-# Part of MIDI Muppet 4btn – Copyright (C) 2026 Jon Solberg – GPL v3 or later, see LICENSE.
+# Part of MIDI Muppet Max – Copyright (C) 2026 Jon Solberg – GPL v3 or later, see LICENSE.
 
 # Mimics the Arduino IDE: adds Arduino.h and inserts prototypes right before the first function.
 import re, sys

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-# Part of MIDI Muppet 4btn – Copyright (C) 2026 Jon Solberg – GPL v3 or later, see LICENSE.
-"""Tests the MIDI Muppet config firmware in simavr through harness."""
+# Part of MIDI Muppet Max – Copyright (C) 2026 Jon Solberg – GPL v3 or later, see LICENSE.
+"""Tests the MIDI Muppet Max config firmware in simavr through harness."""
 import subprocess, sys
 
 import os
@@ -275,6 +275,6 @@ def suite(elf, mcu, mhz):
 if __name__ == '__main__':
     for mcu in ('atmega168', 'atmega328p'):
         for mhz in (16, 8):
-            suite(os.path.join(BUILD, f'mm4config-{mcu}-{mhz}mhz.elf'), mcu, mhz)
+            suite(os.path.join(BUILD, f'mmmaxconfig-{mcu}-{mhz}mhz.elf'), mcu, mhz)
     print('\nFAILURES:', failures)
     sys.exit(1 if failures else 0)

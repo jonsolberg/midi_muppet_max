@@ -1,7 +1,7 @@
 /**************************************************************************
 
-  MIDI foot switch for the BOSS RC-500 Loop Station
-  =================================================
+  MIDI Muppet Max - MIDI foot switch for the Wampler Terraform
+  ============================================================
 
   Four button MIDI foot switch that recalls presets with Program Change
   messages. A short press recalls one preset, a long press another.
@@ -75,9 +75,9 @@
 
   Pedal notes
   -----------
-  On the RC-500, Program Change 0-98 selects memory 1-99. Make sure the
-  RC-500 receives on the same MIDI channel as MIDI_CHANNEL below
-  (set in the RC-500's MIDI settings).
+  On the Terraform, Program Change selects a preset (PC 0 = preset 1).
+  Make sure the Terraform listens on the same MIDI channel as MIDI_CHANNEL
+  below.
 
   LED feedback
   ------------

@@ -110,7 +110,7 @@ kbd{font:600 .8rem ui-monospace,monospace;background:var(--chip);border:1px soli
 <main>
   <section class="pedal-wrap">
     <div class="card">
-      <svg class="pedal" id="pedal" viewBox="0 0 300 450" role="img" aria-label="The MIDI Muppet seen from above. Click a switch to edit it."></svg>
+      <svg class="pedal" id="pedal" viewBox="0 0 300 450" role="img" aria-label="The MIDI Muppet Max seen from above. Click a switch to edit it."></svg>
       <ul class="legend" id="legend"></ul>
       <p class="hint" id="liveHint">Connected: press a switch on the pedal and it lights up here.</p>
       <p class="hint">The LED in the picture does what the pedal's LED does: it blinks green/red in setup mode, and when you press a switch – here or on the pedal – it shows the flashes you'll see while playing.</p>
@@ -191,7 +191,7 @@ kbd{font:600 .8rem ui-monospace,monospace;background:var(--chip);border:1px soli
           <input type="file" id="importFile" accept=".json,application/json" hidden>
         </div>
         <h3>Firmware</h3>
-        <p class="hint" style="margin-top:0">The editor needs the MIDI Muppet config firmware on the Arduino. Install it once – it works for Arduino Nano and Pro Mini with ATmega168 or ATmega328P, in MIDI Muppet Max and MIDI Muppet HX.</p>
+        <p class="hint" style="margin-top:0">The editor needs the MIDI Muppet Max config firmware on the Arduino. Install it once – it works for Arduino Nano and Pro Mini with ATmega168 or ATmega328P, in MIDI Muppet Max and MIDI Muppet HX.</p>
         <div class="row"><label for="board">Arduino</label>
           <select id="board">
             <option value="16">Nano / Pro Mini 5 V</option>
@@ -232,7 +232,7 @@ kbd{font:600 .8rem ui-monospace,monospace;background:var(--chip);border:1px soli
 'use strict';
 /* MIDI Muppet Max editor
  * Copyright (C) 2026 Jon Solberg – GPL v3 or later.
- * Talks to midi_muppet_4btn_config firmware over Web Serial and installs it with the STK500 protocol.
+ * Talks to midi_muppet_max_config firmware over Web Serial and installs it with the STK500 protocol.
  */
 
 // ------------------------------------------------------------ config format (matches the firmware)
@@ -269,7 +269,7 @@ function encode(c) {
 }
 
 function decode(b) {
-  if (b.length !== CFG_SIZE || b[0] !== 77 || b[1] !== 52) throw new Error('not a MIDI Muppet setup');
+  if (b.length !== CFG_SIZE || b[0] !== 77 || b[1] !== 52) throw new Error('not a MIDI Muppet Max setup');
   if (b[2] !== CFG_VERSION) throw new Error('setup version ' + b[2] + ' is not supported');
   const actions = [];
   for (let i = 0; i < 8; i++) { const o = 12 + i * 5; actions.push(act(b[o], b[o + 1], b[o + 2], b[o + 3], b[o + 4])); }
@@ -298,7 +298,7 @@ const DEVICES = [
   {id: 'md200', name: 'BOSS MD-200', note: 'Turn on CC IN (CCi) on the MD-200. The CC numbers are the usual factory settings – check them in the pedal\'s CC settings if a command does nothing. Program 1 is MANUAL, programs 2 and up are the memories.'},
   {id: 'rc500', name: 'BOSS RC-500', note: 'Program Change selects a memory. For ASSIGN, set the same CC number as an ASSIGN source in the RC-500 memory.'},
   {id: 'hx', name: 'Line 6 HX Stomp'},
-  {id: 'iridium', name: 'Strymon Iridium', note: '300 presets in three banks – the MIDI Muppet sends the bank (CC 0) before the program.'},
+  {id: 'iridium', name: 'Strymon Iridium', note: '300 presets in three banks – the MIDI Muppet Max sends the bank (CC 0) before the program.'},
   {id: 'timeline', name: 'Strymon TimeLine', note: 'The original TimeLine (not TimeLine MX): 200 presets, 00A–99B.'},
   {id: 'terraform', name: 'Wampler Terraform', note: 'Needs the Terraform firmware with MIDI CC support (October 2023 or newer).'},
 ];
@@ -726,17 +726,17 @@ $('btnTemplate').onclick = () => {
 
 // ------------------------------------------------------------ file import / export
 $('btnExport').onclick = () => {
-  const data = {format: 'midi-muppet-4btn', version: CFG_VERSION, setup: hex(encode(state.cfg)), pedalHint: state.pedalHint, devices: state.slotDev, readable: state.cfg};
+  const data = {format: 'midi-muppet-max', version: CFG_VERSION, setup: hex(encode(state.cfg)), pedalHint: state.pedalHint, devices: state.slotDev, readable: state.cfg};
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([JSON.stringify(data, null, 1)], {type: 'application/json'}));
-  a.download = 'midi-muppet-setup.json'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  a.download = 'midi-muppet-max-setup.json'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 };
 $('btnImport').onclick = () => $('importFile').click();
 $('importFile').onchange = async e => {
   const f = e.target.files[0]; if (!f) return;
   try {
     const d = JSON.parse(await f.text());
-    if (d.format !== 'midi-muppet-4btn') throw new Error('not a MIDI Muppet setup file');
+    if (d.format !== 'midi-muppet-max' && d.format !== 'midi-muppet-4btn') throw new Error('not a MIDI Muppet Max setup file');   // older files say midi-muppet-4btn
     state.cfg = decode(unhex(d.setup)); state.pedalHint = d.pedalHint || null;
     state.slotDev = Array.isArray(d.devices) && d.devices.length === 8 ? d.devices.map(v => DEV_BY_ID[v] ? v : null) : Array(8).fill(null);
     changed(); renderAll(); msg('pedalMsg', 'Setup imported. Save it to the pedal to use it.', 'ok');
@@ -1054,7 +1054,7 @@ async function connect() {
       setDirty(true);
     } else { state.cfg = fromPedal; state.slotDev = Array(8).fill(null); setDirty(false); }
     status('Connected', 'on');
-    $('pedalInfo').innerHTML = `MIDI Muppet config firmware ${pedal.info.fw} · ${pedal.info.mcu === '168' ? 'ATmega168' : 'ATmega328P'} · ${pedal.info.mhz} MHz. The LED blinks green/red while the pedal is in setup mode.`
+    $('pedalInfo').innerHTML = `MIDI Muppet Max config firmware ${pedal.info.fw} · ${pedal.info.mcu === '168' ? 'ATmega168' : 'ATmega328P'} · ${pedal.info.mhz} MHz. The LED blinks green/red while the pedal is in setup mode.`
       + (pedal.info.fw < FW_LATEST ? ' <b>A newer firmware is available</b> – click “Install firmware” to update (your setup is kept).' : '');
     Led.setup();
     renderAll(); updateButtons();
@@ -1301,7 +1301,7 @@ async function flash() {
 }
 $('btnFlash').onclick = flash;
 $('btnCopyLog').onclick = async () => {
-  const text = 'MIDI Muppet editor log – ' + navigator.userAgent + '\n' + LOG.join('\n');
+  const text = 'MIDI Muppet Max editor log – ' + navigator.userAgent + '\n' + LOG.join('\n');
   try { await navigator.clipboard.writeText(text); $('btnCopyLog').textContent = 'Copied ✓'; }
   catch (e) { const r = document.createRange(); r.selectNodeContents($('log')); getSelection().removeAllRanges(); getSelection().addRange(r); }
   setTimeout(() => $('btnCopyLog').textContent = 'Copy log', 2000);

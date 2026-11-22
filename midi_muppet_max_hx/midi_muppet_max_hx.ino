@@ -1,6 +1,6 @@
 /**************************************************************************
 
-  MIDI Muppet HX 4btn - four button MIDI foot switch for the Line 6 HX Stomp
+  MIDI Muppet Max HX - four button MIDI foot switch for the Line 6 HX Stomp
   =========================================================================
 
   Based on MIDI Muppet HX (2 buttons) by Matthias Wientapper

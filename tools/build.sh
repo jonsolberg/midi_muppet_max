@@ -1,5 +1,5 @@
 #!/bin/bash
-# Part of MIDI Muppet 4btn – Copyright (C) 2026 Jon Solberg – GPL v3 or later, see LICENSE.
+# Part of MIDI Muppet Max – Copyright (C) 2026 Jon Solberg – GPL v3 or later, see LICENSE.
 # Compile an Arduino sketch with plain avr-gcc against ArduinoCore-avr.
 # usage: [FCPU=8000000L] build.sh <sketch.ino> <mcu> [output name]   mcu: atmega168 / atmega328p
 set -e

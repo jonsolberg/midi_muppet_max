@@ -121,10 +121,10 @@ for those who prefer to change the code and upload it with the Arduino IDE.
 
 | Sketch | Pedal | What it does |
 |---|---|---|
-| [`midi_muppet_4btn_config`](midi_muppet_4btn_config/midi_muppet_4btn_config.ino) | Any MIDI device | **Universal firmware for the web editor**, for MIDI Muppet Max and MIDI Muppet HX |
-| [`midi_muppet_hx_4btn`](midi_muppet_hx_4btn/midi_muppet_hx_4btn.ino) | Line 6 HX Stomp | Preset/snapshot scrolling, FS4/FS5, looper, tuner, tap tempo, all bypass |
-| [`midi_Boss_RC500_4btn`](midi_Boss_RC500_4btn/midi_Boss_RC500_4btn.ino) | BOSS RC-500 Loop Station | Recalls 8 memories (short and long press) with Program Change |
-| [`midi_Wampler_Terraform_4btn`](midi_Wampler_Terraform_4btn/midi_Wampler_Terraform_4btn.ino) | Wampler Terraform | Recalls 8 presets (short and long press) with Program Change |
+| [`midi_muppet_max_config`](midi_muppet_max_config/midi_muppet_max_config.ino) | Any MIDI device | **Universal firmware for the web editor**, for MIDI Muppet Max and MIDI Muppet HX |
+| [`midi_muppet_max_hx`](midi_muppet_max_hx/midi_muppet_max_hx.ino) | Line 6 HX Stomp | Preset/snapshot scrolling, FS4/FS5, looper, tuner, tap tempo, all bypass |
+| [`midi_muppet_max_rc500`](midi_muppet_max_rc500/midi_muppet_max_rc500.ino) | BOSS RC-500 Loop Station | Recalls 8 memories (short and long press) with Program Change |
+| [`midi_muppet_max_terraform`](midi_muppet_max_terraform/midi_muppet_max_terraform.ino) | Wampler Terraform | Recalls 8 presets (short and long press) with Program Change |
 
 ### Building a sketch yourself
 
@@ -230,9 +230,6 @@ sketch here is his code extended to four switches, and the other sketches reuse 
 and LED code. Thank you, Matthias. His build guide, schematic and photos are well worth a
 look if you want to build one yourself.
 
-MIDI Muppet HX is licensed under the BSD 3-Clause License. Its copyright notice is kept in
-every sketch and in [LICENSE-midi_muppet.txt](LICENSE-midi_muppet.txt).
-
 ## Support
 
 The MIDI Muppet Max editor and firmware are free and open source. If you enjoy them, you can
@@ -242,7 +239,7 @@ The MIDI Muppet Max editor and firmware are free and open source. If you enjoy t
 
 ## License
 
-Copyright © 2026 Jon Solberg
+MIDI Muppet Max – Copyright © 2026 Jon Solberg
 
 This program is free software: you can redistribute it and/or modify it under the terms of the
 GNU General Public License as published by the Free Software Foundation, either version 3 of the
@@ -253,4 +250,4 @@ even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE
 [GNU General Public License](LICENSE) for more details.
 
 Code from MIDI Muppet HX is Copyright © 2020 Matthias Wientapper, used under the
-[BSD 3-Clause License](LICENSE-midi_muppet.txt).
+[BSD 3-Clause License](LICENSE-midi_muppet.txt). Its copyright notice is kept in every sketch.

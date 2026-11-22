@@ -1,4 +1,4 @@
-// Part of MIDI Muppet 4btn – Copyright (C) 2026 Jon Solberg – GPL v3 or later, see LICENSE.
+// Part of MIDI Muppet Max – Copyright (C) 2026 Jon Solberg – GPL v3 or later, see LICENSE.
 // End-to-end test: the real editor page in headless Chrome, with navigator.serial replaced by a
 // fake port wired to the firmware running in simavr (optionally behind a real Arduino bootloader).
 const {spawn} = require('child_process');
@@ -179,7 +179,7 @@ async function waitText(sel, re, ms) {
     await page.click('#btnFlash');
     const m = await waitText('#flashMsg', /✓|failed|No bootloader|not an/, 240000);
     check('firmware installed through the bootloader: ' + m, /✓/.test(m), m);
-    const hexText = fs.readFileSync(path.join(ROOT, 'firmware', `midi_muppet_4btn_config-${mcu}-${MHZ}mhz.hex`), 'utf8');
+    const hexText = fs.readFileSync(path.join(ROOT, 'firmware', `midi_muppet_max_config-${mcu}-${MHZ}mhz.hex`), 'utf8');
     const img = Buffer.alloc(32768, 0xff); let top = 0;
     for (const l of hexText.split('\n')) if (l.startsWith(':') && l.slice(7, 9) === '00') {
       const b = Buffer.from(l.slice(1).trim(), 'hex'); const a = b.readUInt16BE(1); b.copy(img, a, 4, 4 + b[0]); top = Math.max(top, a + b[0]); }
@@ -253,7 +253,7 @@ async function waitText(sel, re, ms) {
   check('reads the HX setup back', (await page.$eval('#profile', e => e.value)) === '1');
 
   // 7. export / import round trip
-  const exported = await page.evaluate(() => JSON.stringify({format: 'midi-muppet-4btn', setup: Array.from(__mm.encode(__mm.state.cfg), b => b.toString(16).padStart(2, '0')).join('')}));
+  const exported = await page.evaluate(() => JSON.stringify({format: 'midi-muppet-max', setup: Array.from(__mm.encode(__mm.state.cfg), b => b.toString(16).padStart(2, '0')).join('')}));
   check('export format is plain JSON', JSON.parse(exported).setup.length === 106);
 
   // 7b. original two button MIDI Muppet HX
