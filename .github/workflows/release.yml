@@ -1,0 +1,34 @@
+name: Release
+# Publishes firmware/*.hex and the editor as release v<VERSION> whenever they change on main.
+# Bump VERSION to start a new release; otherwise the files of the current one are replaced.
+
+on:
+  push:
+    branches: [main]
+    paths: ["VERSION", "firmware/**", "editor/index.html", ".github/workflows/release.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          V=$(tr -d '[:space:]' < VERSION)
+          TAG="v$V"
+          mkdir out
+          cp firmware/*.hex out/
+          cp editor/index.html out/midi-muppet-editor.html
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" out/* --clobber
+          else
+            gh release create "$TAG" out/* --target "$GITHUB_SHA" --latest \
+              --title "MIDI Muppet Max $V" \
+              --notes "Firmware 5 and the web editor. Open the editor at https://jonsolberg.github.io/midi_muppet_max/ – it installs the firmware for you. The .hex files are for flashing by hand; midi-muppet-editor.html is the editor to use offline."
+          fi
