@@ -232,14 +232,14 @@ look if you want to build one yourself.
 
 ## Support
 
-The MIDI Muppet Max editor and firmware are free and open source. If you enjoy them, you can
+The MIDI Muppet Max editor and firmware are free, open source and have no ads. If you find them useful, you can
 [support me on Ko-fi](https://ko-fi.com/jonsolberg) ❤️
 
 [![Support me on Ko-fi](https://img.shields.io/badge/Ko--fi-support%20me-FF5E5B?logo=ko-fi&logoColor=white)](https://ko-fi.com/jonsolberg)
 
 ## License
 
-MIDI Muppet Max – Copyright © 2026 Jon Solberg
+Copyright © 2026 Jon Solberg
 
 This program is free software: you can redistribute it and/or modify it under the terms of the
 GNU General Public License as published by the Free Software Foundation, either version 3 of the
