@@ -48,15 +48,25 @@ command**; the command list changes with the pedal:
 | Pedal | Commands |
 |---|---|
 | **Any MIDI device** (default) | Program Change, Control Change, CC toggle, CC momentary, next/previous program in a range, bank + program |
-| BOSS MD-200 | Memory, next/previous memory, Manual, effect on/off, ON/OFF, MEMORY/TAP, CTL 1 and CTL 2 footswitches |
-| BOSS RC-500 | Memory 1–99, next/previous memory, ASSIGN control (held or on/off) |
+| BOSS MD-200 | Memory, next/previous memory, Manual, effect on/off, ON/OFF, MEMORY/TAP, CTL 1 and CTL 2 footswitches, RATE, DEPTH, E.LEVEL, PARAM 1–3 and expression to a value |
+| BOSS RC-500 | Memory 1–99, next/previous memory, and through ASSIGN: track 1/2 rec/play, play/stop and clear, current track rec/play and clear, track select, undo/redo, start all, tap tempo, rhythm play/stop, fill and variation, loop FX on/off, or any other ASSIGN target |
 | Line 6 HX Stomp | Tap tempo, tuner, preset and snapshot up/down, snapshot 1–8, FS1–FS5, all bypass, looper, footswitch mode |
-| Strymon Iridium | Preset 1–300, next/previous preset, bypass, FAV and ON footswitches, amp (round, chime, punch), amp bypass, cab, room size |
+| Strymon Iridium | Preset 1–300, Favorite, Manual mode, next/previous preset, bypass, FAV and ON footswitches, amp (round, chime, punch), amp bypass, cab, room size, every knob to a value, volume pedal and its pre/post position, expression, MIDI expression on/off |
 | Strymon TimeLine (not MX) | Preset 00A–99B, next/previous preset, bypass, tap tempo, A and B footswitches, infinite repeats, looper (record, play, stop, undo, redo, reverse, half speed) |
 | Wampler Terraform | Preset, next/previous preset, bypass, tap tempo, effect, rotary fast/slow, routing |
 
-The commands follow each maker's published MIDI chart. The MD-200's MIDI CC numbers can be changed on the
-pedal (and *CC IN* must be on), so the editor uses the common defaults; check them if a command does nothing.
+The commands follow each maker's official MIDI documentation:
+
+- **Strymon Iridium** and **TimeLine**: the MIDI CC charts in Strymon's user manuals. On the Iridium, program 0 is the
+  Favorite and bank 0 program 127 is Manual mode.
+- **BOSS MD-200**: every function has its own CC number, set in the pedal's menu (RTC, DPC, ELC, P1C–P3C, SWC, MEC,
+  C1C, C2C, EPC, EFC), and *CC IN* must be on. The editor shows the number each command uses – set the same number on
+  the pedal, or pick *Any MIDI device* to send another. Program 1 is MANUAL, programs 2–128 are memories 1–127.
+- **BOSS RC-500**: apart from Program Change (memories), the RC-500 is controlled through ASSIGN. Each command shows a
+  CC number and an ASSIGN target: in the RC-500 memory set ASSIGN ON, SOURCE = that CC (1–31 or 64–95),
+  SRC MODE = MOMENT and TARGET = the function. ASSIGN settings are saved per memory.
+
+BOSS 200-series pedals and the RC-500 need both 0 and 127 for a switch, which is what the held commands send.
 
 A switch without a long press reacts as soon as you step on it. With a long press, the short press is sent
 when you lift your foot. The long press time and the MIDI channel are settings too, and each command can use
@@ -71,7 +81,7 @@ One setup per pedal, for the four button MIDI Muppet Max:
 | BOSS MD-200 | next memory 1–4 · previous memory 1–4 (Manual) · CTL 1 while held · effect on/off |
 | BOSS RC-500 | next memory · previous memory · memory 2 (4) · memory 1 (3) |
 | Line 6 HX Stomp | MIDI Muppet HX modes on 1–2 · tap (tuner) · CC 6 toggle (all bypass) |
-| Strymon Iridium | next preset · previous preset (preset 1) · FAV while held · bypass (amp bypass) |
+| Strymon Iridium | next preset · previous preset (Favorite) · FAV while held · bypass (amp bypass) |
 | Strymon TimeLine | next preset (looper stop) · previous preset (looper play) · tap (record) · bypass (infinite repeats) |
 | Wampler Terraform | next preset · previous preset (preset 1) · tap (rotary speed) · bypass |
 
