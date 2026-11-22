@@ -1,7 +1,7 @@
 /**************************************************************************
 
-  MIDI Muppet 4btn Config - universal firmware for the four button
-  MIDI Muppet, set up from the web editor over USB
+  MIDI Muppet Max Config - universal firmware for MIDI Muppet Max (four
+  buttons) and MIDI Muppet HX (two buttons), set up from the web editor over USB
   ======================================================================
 
   Based on MIDI Muppet HX by Matthias Wientapper
@@ -58,7 +58,7 @@
 
   ------------------------------------------------------------------------
 
-  Hardware (same as the other MIDI Muppet 4btn sketches)
+  Hardware (same as the other MIDI Muppet Max sketches)
   --------
   - Buttons 1-4      D2, D3, D6, D8 (to ground, internal pull-ups)
   - LED green / red  D4, D5 (bicolor LED, common cathode or common anode,
@@ -68,12 +68,12 @@
     16 MHz (5 V) or 8 MHz (3.3 V Pro Mini) - build with the matching board setting
   - No extra libraries needed.
   - Also runs on the original two button MIDI Muppet HX (switches on D2 = UP
-    and D3 = DN, same LED pins); choose "Original MIDI Muppet HX" in the editor.
+    and D3 = DN, same LED pins); choose "MIDI Muppet HX (two buttons)" in the editor.
 
   How it is set up
   ----------------
   All settings live in EEPROM and are written by the web editor:
-  https://jonsolberg.se:8080/MidiMuppet/
+  https://jonsolberg.github.io/midi_muppet_max/
 
   When the editor opens the USB port, the Arduino restarts. For the first
   1.5 seconds after power-up the firmware listens on USB at 115200 baud
@@ -112,12 +112,14 @@
   6 Previous program     a = first, b = last (wraps around)
   7 HX tuner             toggles the HX Stomp tuner (CC 68) and, in the
                          HX Stomp profile, the tuner mode
+  8 Bank + Program       a = program, b = bank (CC 0), for pedals with more
+                         than 128 presets (Strymon Iridium, TimeLine)
 
 **************************************************************************/
 
 #include <EEPROM.h>
 
-#define FW_VERSION 4
+#define FW_VERSION 5
 
 // ---------------------------------------------------------------- pins
 const uint8_t BTN_PINS[4] = {2, 3, 6, 8};
@@ -143,7 +145,7 @@ enum { P_MAGIC0 = 0, P_MAGIC1, P_VERSION, P_PROFILE, P_CHANNEL, P_FLAGS,
 #define FLAG_LED_HOLD     0x10   // generic profile: LED lit only while a switch is held
 #define FLAG_IDLE_GLOW    0x20   // generic profile: faint red when idle, shows the pedal is on
 
-enum { A_NONE = 0, A_PC, A_CC, A_CC_TOGGLE, A_CC_MOMENTARY, A_PC_NEXT, A_PC_PREV, A_HX_TUNER };
+enum { A_NONE = 0, A_PC, A_CC, A_CC_TOGGLE, A_CC_MOMENTARY, A_PC_NEXT, A_PC_PREV, A_HX_TUNER, A_PC_BANK };
 
 uint8_t cfg[CFG_SIZE];
 
@@ -369,6 +371,12 @@ void runAction(uint8_t slot, bool released) {
 
   switch (p[0]) {
     case A_PC:
+      program = p[2];
+      midiProgChange(ch, program);
+      flash(led, program % 4 + 1);
+      break;
+    case A_PC_BANK:
+      midiCtrlChange(ch, 0, p[3]);      // bank select first, then the program
       program = p[2];
       midiProgChange(ch, program);
       flash(led, program % 4 + 1);

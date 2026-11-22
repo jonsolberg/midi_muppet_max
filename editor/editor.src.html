@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>MIDI Muppet editor</title>
-<meta name="description" content="Set up the MIDI Muppet foot switch – the four button version or the original MIDI Muppet HX – from your browser: actions for every switch, HX Stomp modes, BOSS RC-500 and Wampler Terraform presets.">
+<title>MIDI Muppet Max editor</title>
+<meta name="description" content="Set up the MIDI Muppet Max (four buttons) or MIDI Muppet HX (two buttons) foot switch from your browser: commands for HX Stomp, BOSS MD-200 and RC-500, Strymon Iridium and TimeLine, Wampler Terraform or any MIDI device.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Crect x='6' y='4' width='36' height='40' rx='6' fill='%23161a22'/%3E%3Ccircle cx='17' cy='14' r='4' fill='%23cfd6e0'/%3E%3Ccircle cx='31' cy='14' r='4' fill='%23cfd6e0'/%3E%3Ccircle cx='17' cy='34' r='4' fill='%23cfd6e0'/%3E%3Ccircle cx='31' cy='34' r='4' fill='%23cfd6e0'/%3E%3Ccircle cx='24' cy='24' r='2' fill='%2348d17a'/%3E%3C/svg%3E">
 <style>
 :root{
@@ -94,9 +94,9 @@ kbd{font:600 .8rem ui-monospace,monospace;background:var(--chip);border:1px soli
 <body>
 <header class="top">
   <div>
-    <a class="home" href="/">← jonsolberg.se</a>
-    <h1>MIDI Muppet editor</h1>
-    <div class="sub">Set up your MIDI Muppet over USB – the four button version or the original two button MIDI Muppet HX. No Arduino IDE needed.</div>
+    <a class="home" href="https://jonsolberg.se:8080/">← jonsolberg.se</a>
+    <h1>MIDI Muppet Max editor</h1>
+    <div class="sub">Set up your MIDI Muppet Max (four buttons) or MIDI Muppet HX (two buttons) over USB. No Arduino IDE needed.</div>
   </div>
   <div class="conn">
     <span class="status" id="status"><i></i><span id="statusText">Not connected</span></span>
@@ -113,6 +113,7 @@ kbd{font:600 .8rem ui-monospace,monospace;background:var(--chip);border:1px soli
       <svg class="pedal" id="pedal" viewBox="0 0 300 450" role="img" aria-label="The MIDI Muppet seen from above. Click a switch to edit it."></svg>
       <ul class="legend" id="legend"></ul>
       <p class="hint" id="liveHint">Connected: press a switch on the pedal and it lights up here.</p>
+      <p class="hint">The LED in the picture does what the pedal's LED does: it blinks green/red in setup mode, and when you press a switch – here or on the pedal – it shows the flashes you'll see while playing.</p>
     </div>
   </section>
 
@@ -127,8 +128,8 @@ kbd{font:600 .8rem ui-monospace,monospace;background:var(--chip);border:1px soli
         <h2>Pedal setup</h2>
         <div class="row"><label for="hardware">Pedal</label>
           <select id="hardware">
-            <option value="4">4btn – 4 switches</option>
-            <option value="2">Original HX – 2 switches</option>
+            <option value="4">MIDI Muppet Max (four buttons)</option>
+            <option value="2">MIDI Muppet HX (two buttons)</option>
           </select></div>
         <div class="row"><label for="profile">Profile</label>
           <select id="profile">
@@ -160,14 +161,14 @@ kbd{font:600 .8rem ui-monospace,monospace;background:var(--chip);border:1px soli
         <div class="toolbar">
           <select id="template" style="max-width:340px">
             <option value="">Choose…</option>
-            <option value="original">Original MIDI Muppet HX – 2 switches, as it came</option>
-            <option value="hx">HX Stomp – MIDI Muppet HX (up/down, tap, tuner, bypass)</option>
-            <option value="hx4">HX Stomp – snapshots and footswitches</option>
-            <option value="rc500">BOSS RC-500 – 8 memories</option>
-            <option value="rc500nav">BOSS RC-500 – memory up / down</option>
-            <option value="terraform">Wampler Terraform – 8 presets</option>
-            <option value="terraformnav">Wampler Terraform – preset up / down</option>
-            <option value="empty">Empty</option>
+            <option value="original">MIDI Muppet HX (two buttons) – as it came</option>
+            <option value="md200">BOSS MD-200 – memories, effect on/off, CTL 1</option>
+            <option value="rc500">BOSS RC-500 – memory up/down and four memories</option>
+            <option value="hx">Line 6 HX Stomp – MIDI Muppet HX modes, tap, tuner, bypass</option>
+            <option value="iridium">Strymon Iridium – presets, FAV, bypass, amp bypass</option>
+            <option value="timeline">Strymon TimeLine – presets, tap, bypass, looper</option>
+            <option value="terraform">Wampler Terraform – presets, tap, bypass, rotary speed</option>
+            <option value="empty">Any MIDI device – start empty</option>
           </select>
           <button id="btnTemplate">Use</button>
         </div>
@@ -190,7 +191,7 @@ kbd{font:600 .8rem ui-monospace,monospace;background:var(--chip);border:1px soli
           <input type="file" id="importFile" accept=".json,application/json" hidden>
         </div>
         <h3>Firmware</h3>
-        <p class="hint" style="margin-top:0">The editor needs the MIDI Muppet config firmware on the Arduino. Install it once – it works for Arduino Nano and Pro Mini with ATmega168 or ATmega328P, in the 4btn and in the original MIDI Muppet HX.</p>
+        <p class="hint" style="margin-top:0">The editor needs the MIDI Muppet config firmware on the Arduino. Install it once – it works for Arduino Nano and Pro Mini with ATmega168 or ATmega328P, in MIDI Muppet Max and MIDI Muppet HX.</p>
         <div class="row"><label for="board">Arduino</label>
           <select id="board">
             <option value="16">Nano / Pro Mini 5 V</option>
@@ -217,26 +218,27 @@ kbd{font:600 .8rem ui-monospace,monospace;background:var(--chip);border:1px soli
       </ol>
       <details><summary>Details for the curious</summary>
         <p class="hint">After power-up the firmware listens on USB for 1.5 seconds before it starts as a foot switch, so it doesn't send anything to your other pedals while it listens. A switch without a long press action reacts as soon as you step on it; with a long press action, the short press is sent when you lift your foot. In the HX Stomp profile, switches 1 and 2 work exactly like the original MIDI Muppet HX: scroll, footswitch, snapshot, looper and tuner modes, and holding both switches changes mode.</p>
-        <p class="hint">Wiring: switches on D2, D3, D6, D8 to ground (the original MIDI Muppet HX uses only D2 = UP and D3 = DN); bicolor LED green on D4, red on D5; MIDI out on TX. See the <a href="https://github.com/jonsolberg/midi_muppet_multi_4btn">project on GitHub</a>.</p>
+        <p class="hint">Wiring: switches on D2, D3, D6, D8 to ground (MIDI Muppet HX uses only D2 = UP and D3 = DN); bicolor LED green on D4, red on D5; MIDI out on TX. See the <a href="https://github.com/jonsolberg/midi_muppet_max">project on GitHub</a>.</p>
       </details>
     </div>
   </section>
 </main>
 <footer>
-  MIDI Muppet editor and 4btn by Jon Solberg, based on <a href="https://github.com/mattzzw/midi_muppet_hx_2btn">MIDI Muppet HX</a> by Matthias Wientapper.
-  Free software under GPL v3 · <a href="https://github.com/jonsolberg/midi_muppet_multi_4btn">Source on GitHub</a>
+  MIDI Muppet Max and its editor © 2026 Jon Solberg, based on <a href="https://github.com/mattzzw/midi_muppet_hx_2btn">MIDI Muppet HX</a> by Matthias Wientapper.
+  Free software under GPL v3 · <a href="https://github.com/jonsolberg/midi_muppet_max">Source and help on GitHub</a> · <a href="https://jonsolberg.se:8080/">jonsolberg.se</a> · <a href="https://ko-fi.com/jonsolberg">❤️ Support me on Ko-fi</a>
 </footer>
 
 <script>
 'use strict';
-/* MIDI Muppet 4btn editor
+/* MIDI Muppet Max editor
  * Copyright (C) 2026 Jon Solberg – GPL v3 or later.
  * Talks to midi_muppet_4btn_config firmware over Web Serial and installs it with the STK500 protocol.
  */
 
 // ------------------------------------------------------------ config format (matches the firmware)
 const CFG_SIZE = 53, CFG_VERSION = 1;
-const T = {NONE:0, PC:1, CC:2, TOGGLE:3, MOMENTARY:4, NEXT:5, PREV:6, HXTUNER:7};
+const T = {NONE:0, PC:1, CC:2, TOGGLE:3, MOMENTARY:4, NEXT:5, PREV:6, HXTUNER:7, PCBANK:8};
+const FW_LATEST = 5;   // firmware version built into this editor
 const FLAG_LED = 1, FLAG_LOOPER = 2, FLAG_TWO = 4, FLAG_LED_INV = 8, FLAG_LED_HOLD = 16, FLAG_GLOW = 32;
 const POS_NAMES = ['Top left', 'Top right', 'Bottom left', 'Bottom right'];
 const POS_NAMES_2 = ['Left', 'Right'];
@@ -281,58 +283,139 @@ const unhex = h => new Uint8Array(h.match(/../g).map(x => parseInt(x, 16)));
 
 // ------------------------------------------------------------ action catalogue
 // Each choice turns an action into editable fields and back. Pedal presets come first when they match.
-const num = (key, label, min, max, def, offset = 0) => ({key, label, min, max, def, offset});
+const num = (key, label, min, max, def, offset = 0, fmt) => ({key, keys: [key], label, min, max, def, offset, fmt});
+/** a preset number spread over bank (CC 0, in b) and program (a): 128 programs per bank */
+const banked = (label, max, fmt) => ({key: 'p', keys: ['a', 'b'], label, min: 1, max, def: 1, fmt,
+  get: x => x.b * 128 + x.a + 1, set: (x, v) => { x.a = (v - 1) % 128; x.b = Math.floor((v - 1) / 128); }});
+const fget = (f, x) => f.get ? f.get(x) : x[f.key] - f.offset;
+const fset = (f, x, v) => { if (f.set) f.set(x, v); else x[f.key] = v + f.offset; };
+const TL_NAME = v => String((v - 1) >> 1).padStart(2, '0') + 'AB'[(v - 1) & 1];
+const TF_FX = ['Auto Wah', 'Envelope Filter', 'Flanger', 'Phaser', 'Uni-Vibe', 'Rotary', 'Auto Swell', 'Tremolo', 'Harmonic Tremolo', 'Chorus', 'Dimension'];
+
+/** The pedals in the "Pedal" list: Any MIDI device first, then alphabetical. */
+const DEVICES = [
+  {id: 'any', name: 'Any MIDI device'},
+  {id: 'md200', name: 'BOSS MD-200', note: 'Turn on CC IN (CCi) on the MD-200. The CC numbers are the usual factory settings – check them in the pedal\'s CC settings if a command does nothing. Program 1 is MANUAL, programs 2 and up are the memories.'},
+  {id: 'rc500', name: 'BOSS RC-500', note: 'Program Change selects a memory. For ASSIGN, set the same CC number as an ASSIGN source in the RC-500 memory.'},
+  {id: 'hx', name: 'Line 6 HX Stomp'},
+  {id: 'iridium', name: 'Strymon Iridium', note: '300 presets in three banks – the MIDI Muppet sends the bank (CC 0) before the program.'},
+  {id: 'timeline', name: 'Strymon TimeLine', note: 'The original TimeLine (not TimeLine MX): 200 presets, 00A–99B.'},
+  {id: 'terraform', name: 'Wampler Terraform', note: 'Needs the Terraform firmware with MIDI CC support (October 2023 or newer).'},
+];
+const DEV_BY_ID = Object.fromEntries(DEVICES.map(d => [d.id, d]));
+
 const CHOICES = [
-  // HX Stomp
-  {id: 'hx-tap', group: 'Line 6 HX Stomp', label: 'Tap tempo', make: () => act(T.CC, 0, 64, 127)},
-  {id: 'hx-tuner', group: 'Line 6 HX Stomp', label: 'Tuner on/off', make: () => act(T.HXTUNER)},
-  {id: 'hx-pup', group: 'Line 6 HX Stomp', label: 'Next preset', make: () => act(T.CC, 0, 72, 127)},
-  {id: 'hx-pdn', group: 'Line 6 HX Stomp', label: 'Previous preset', make: () => act(T.CC, 0, 72, 0)},
-  {id: 'hx-snext', group: 'Line 6 HX Stomp', label: 'Next snapshot', make: () => act(T.CC, 0, 69, 8)},
-  {id: 'hx-sprev', group: 'Line 6 HX Stomp', label: 'Previous snapshot', make: () => act(T.CC, 0, 69, 9)},
-  {id: 'hx-snap', group: 'Line 6 HX Stomp', label: 'Snapshot…', fields: [num('b', 'Snapshot', 1, 8, 1, -1)], make: f => act(T.CC, 0, 69, f.b)},
-  {id: 'hx-fs', group: 'Line 6 HX Stomp', label: 'Footswitch FS1–FS5…', fields: [num('a', 'Footswitch', 1, 5, 4, 48)], match: x => x.type === T.CC && x.a >= 49 && x.a <= 53 && x.b === 127, make: f => act(T.CC, 0, f.a, 127)},
-  {id: 'hx-bypass', group: 'Line 6 HX Stomp', label: 'All bypass on/off', make: () => act(T.TOGGLE, 0, 70, 0, 127)},
-  {id: 'hx-lrec', group: 'Line 6 HX Stomp', label: 'Looper record', make: () => act(T.CC, 0, 60, 127)},
-  {id: 'hx-lodub', group: 'Line 6 HX Stomp', label: 'Looper overdub', make: () => act(T.CC, 0, 60, 0)},
-  {id: 'hx-lplay', group: 'Line 6 HX Stomp', label: 'Looper play', make: () => act(T.CC, 0, 61, 127)},
-  {id: 'hx-lstop', group: 'Line 6 HX Stomp', label: 'Looper stop', make: () => act(T.CC, 0, 61, 0)},
-  {id: 'hx-lundo', group: 'Line 6 HX Stomp', label: 'Looper undo/redo', make: () => act(T.CC, 0, 63, 127)},
-  {id: 'hx-mode-stomp', group: 'Line 6 HX Stomp', label: 'Footswitch mode: stomp', make: () => act(T.CC, 0, 71, 0)},
-  {id: 'hx-mode-snap', group: 'Line 6 HX Stomp', label: 'Footswitch mode: snapshot', make: () => act(T.CC, 0, 71, 3)},
+  {id: 'none', dev: '*', label: 'Nothing', make: () => act(T.NONE)},
+  // Any MIDI device
+  {id: 'pc', dev: 'any', label: 'Program Change', make: () => act(T.PC), fields: [num('a', 'Program (0–127)', 0, 127, 0)]},
+  {id: 'pcbank', dev: 'any', label: 'Bank + Program Change', make: () => act(T.PCBANK), fields: [num('b', 'Bank (CC 0)', 0, 127, 0), num('a', 'Program (0–127)', 0, 127, 0)]},
+  {id: 'cc', dev: 'any', label: 'Control Change', make: () => act(T.CC), fields: [num('a', 'Controller', 0, 127, 0), num('b', 'Value', 0, 127, 127)]},
+  {id: 'toggle', dev: 'any', label: 'CC toggle (on/off)', make: () => act(T.TOGGLE), fields: [num('a', 'Controller', 0, 127, 0), num('b', '1st press value', 0, 127, 127), num('c', '2nd press value', 0, 127, 0)]},
+  {id: 'momentary', dev: 'any', label: 'CC momentary (while held)', shortOnly: true, make: () => act(T.MOMENTARY), fields: [num('a', 'Controller', 0, 127, 0), num('b', 'Value when pressed', 0, 127, 127), num('c', 'Value when released', 0, 127, 0)]},
+  {id: 'next', dev: 'any', label: 'Next program', make: () => act(T.NEXT), fields: [num('a', 'From program', 0, 127, 0), num('b', 'To program', 0, 127, 7)]},
+  {id: 'prev', dev: 'any', label: 'Previous program', make: () => act(T.PREV), fields: [num('a', 'From program', 0, 127, 0), num('b', 'To program', 0, 127, 7)]},
+  // BOSS MD-200
+  {id: 'md-mem', dev: 'md200', label: 'Memory…', make: () => act(T.PC), fields: [num('a', 'Memory', 1, 127, 1)], match: x => x.type === T.PC && x.a >= 1},
+  {id: 'md-man', dev: 'md200', label: 'Manual (panel settings)', make: () => act(T.PC, 0, 0)},
+  {id: 'md-next', dev: 'md200', label: 'Next memory', make: () => act(T.NEXT, 0, 1, 4), fields: [num('a', 'From memory', 1, 127, 1), num('b', 'To memory', 1, 127, 4)]},
+  {id: 'md-prev', dev: 'md200', label: 'Previous memory', make: () => act(T.PREV, 0, 1, 4), fields: [num('a', 'From memory', 1, 127, 1), num('b', 'To memory', 1, 127, 4)]},
+  {id: 'md-fx', dev: 'md200', label: 'Effect on/off', make: () => act(T.TOGGLE, 0, 27, 0, 127)},
+  {id: 'md-on', dev: 'md200', label: 'Effect on', make: () => act(T.CC, 0, 27, 127)},
+  {id: 'md-off', dev: 'md200', label: 'Effect off', make: () => act(T.CC, 0, 27, 0)},
+  {id: 'md-sw', dev: 'md200', label: 'ON/OFF footswitch (held)', shortOnly: true, make: () => act(T.MOMENTARY, 0, 28, 127, 0)},
+  {id: 'md-tap', dev: 'md200', label: 'MEMORY/TAP footswitch (held)', shortOnly: true, make: () => act(T.MOMENTARY, 0, 82, 127, 0)},
+  {id: 'md-ctl1', dev: 'md200', label: 'CTL 1 (held)', shortOnly: true, make: () => act(T.MOMENTARY, 0, 80, 127, 0)},
+  {id: 'md-ctl2', dev: 'md200', label: 'CTL 2 (held)', shortOnly: true, make: () => act(T.MOMENTARY, 0, 81, 127, 0)},
   // BOSS RC-500
-  {id: 'rc-mem', group: 'BOSS RC-500', label: 'Memory…', fields: [num('a', 'Memory', 1, 99, 1, -1)], make: f => act(T.PC, 0, f.a), match: x => x.type === T.PC && x.a <= 98, pedal: 'rc500'},
-  {id: 'rc-next', group: 'BOSS RC-500', label: 'Next memory', make: () => act(T.NEXT, 0, 0, 98), pedal: 'rc500'},
-  {id: 'rc-prev', group: 'BOSS RC-500', label: 'Previous memory', make: () => act(T.PREV, 0, 0, 98), pedal: 'rc500'},
+  {id: 'rc-mem', dev: 'rc500', label: 'Memory…', make: () => act(T.PC), fields: [num('a', 'Memory', 1, 99, 1, -1)], match: x => x.type === T.PC && x.a <= 98},
+  {id: 'rc-next', dev: 'rc500', label: 'Next memory', make: () => act(T.NEXT, 0, 0, 98)},
+  {id: 'rc-prev', dev: 'rc500', label: 'Previous memory', make: () => act(T.PREV, 0, 0, 98)},
+  {id: 'rc-assign', dev: 'rc500', label: 'ASSIGN control (held)…', shortOnly: true, make: () => act(T.MOMENTARY, 0, 1, 127, 0), fields: [num('a', 'CC number', 1, 95, 1)]},
+  {id: 'rc-assignt', dev: 'rc500', label: 'ASSIGN control on/off…', make: () => act(T.TOGGLE, 0, 1, 127, 0), fields: [num('a', 'CC number', 1, 95, 1)]},
+  // Line 6 HX Stomp
+  {id: 'hx-tap', dev: 'hx', label: 'Tap tempo', make: () => act(T.CC, 0, 64, 127)},
+  {id: 'hx-tuner', dev: 'hx', label: 'Tuner on/off', make: () => act(T.HXTUNER)},
+  {id: 'hx-pup', dev: 'hx', label: 'Next preset', make: () => act(T.CC, 0, 72, 127)},
+  {id: 'hx-pdn', dev: 'hx', label: 'Previous preset', make: () => act(T.CC, 0, 72, 0)},
+  {id: 'hx-preset', dev: 'hx', label: 'Preset…', make: () => act(T.PC), fields: [num('a', 'Preset (0–125)', 0, 125, 0)], match: x => x.type === T.PC && x.a <= 125},
+  {id: 'hx-snext', dev: 'hx', label: 'Next snapshot', make: () => act(T.CC, 0, 69, 8)},
+  {id: 'hx-sprev', dev: 'hx', label: 'Previous snapshot', make: () => act(T.CC, 0, 69, 9)},
+  {id: 'hx-snap', dev: 'hx', label: 'Snapshot…', make: () => act(T.CC, 0, 69, 0), fields: [num('b', 'Snapshot', 1, 8, 1, -1)], match: x => x.type === T.CC && x.a === 69 && x.b <= 7},
+  {id: 'hx-fs', dev: 'hx', label: 'Footswitch FS1–FS5…', make: () => act(T.CC, 0, 49, 127), fields: [num('a', 'Footswitch', 1, 5, 4, 48)], match: x => x.type === T.CC && x.a >= 49 && x.a <= 53 && x.b === 127},
+  {id: 'hx-bypass', dev: 'hx', label: 'All bypass on/off', make: () => act(T.TOGGLE, 0, 70, 0, 127)},
+  {id: 'hx-lrec', dev: 'hx', label: 'Looper record', make: () => act(T.CC, 0, 60, 127)},
+  {id: 'hx-lodub', dev: 'hx', label: 'Looper overdub', make: () => act(T.CC, 0, 60, 0)},
+  {id: 'hx-lplay', dev: 'hx', label: 'Looper play', make: () => act(T.CC, 0, 61, 127)},
+  {id: 'hx-lstop', dev: 'hx', label: 'Looper stop', make: () => act(T.CC, 0, 61, 0)},
+  {id: 'hx-lundo', dev: 'hx', label: 'Looper undo/redo', make: () => act(T.CC, 0, 63, 127)},
+  {id: 'hx-mode-stomp', dev: 'hx', label: 'Footswitch mode: stomp', make: () => act(T.CC, 0, 71, 0)},
+  {id: 'hx-mode-snap', dev: 'hx', label: 'Footswitch mode: snapshot', make: () => act(T.CC, 0, 71, 3)},
+  // Strymon Iridium
+  {id: 'ir-preset', dev: 'iridium', label: 'Preset…', make: () => act(T.PCBANK), fields: [banked('Preset', 300)]},
+  {id: 'ir-next', dev: 'iridium', label: 'Next preset (1–127)', make: () => act(T.NEXT, 0, 0, 126)},
+  {id: 'ir-prev', dev: 'iridium', label: 'Previous preset (1–127)', make: () => act(T.PREV, 0, 0, 126)},
+  {id: 'ir-bypass', dev: 'iridium', label: 'Bypass on/off', make: () => act(T.TOGGLE, 0, 102, 0, 127)},
+  {id: 'ir-on', dev: 'iridium', label: 'Engage', make: () => act(T.CC, 0, 102, 127)},
+  {id: 'ir-off', dev: 'iridium', label: 'Bypass', make: () => act(T.CC, 0, 102, 0)},
+  {id: 'ir-fav', dev: 'iridium', label: 'FAV footswitch (held)', shortOnly: true, make: () => act(T.MOMENTARY, 0, 27, 127, 0)},
+  {id: 'ir-onsw', dev: 'iridium', label: 'ON footswitch (held)', shortOnly: true, make: () => act(T.MOMENTARY, 0, 28, 127, 0)},
+  {id: 'ir-amp1', dev: 'iridium', label: 'Amp: round', make: () => act(T.CC, 0, 19, 1)},
+  {id: 'ir-amp2', dev: 'iridium', label: 'Amp: chime', make: () => act(T.CC, 0, 19, 2)},
+  {id: 'ir-amp3', dev: 'iridium', label: 'Amp: punch', make: () => act(T.CC, 0, 19, 3)},
+  {id: 'ir-ampoff', dev: 'iridium', label: 'Amp bypass on/off', make: () => act(T.TOGGLE, 0, 21, 127, 0)},
+  {id: 'ir-cab', dev: 'iridium', label: 'Cab…', make: () => act(T.CC, 0, 20, 0), fields: [num('b', 'Cab (1–9)', 1, 9, 1, -1)], match: x => x.type === T.CC && x.a === 20 && x.b <= 8},
+  {id: 'ir-room', dev: 'iridium', label: 'Room size…', make: () => act(T.CC, 0, 18, 2), fields: [num('b', 'Room (1 small – 3 large)', 1, 3, 2)], match: x => x.type === T.CC && x.a === 18 && x.b >= 1 && x.b <= 3},
+  // Strymon TimeLine
+  {id: 'tl-preset', dev: 'timeline', label: 'Preset…', make: () => act(T.PCBANK), fields: [banked('Preset (1 = 00A … 200 = 99B)', 200, TL_NAME)]},
+  {id: 'tl-next', dev: 'timeline', label: 'Next preset (00A–63B)', make: () => act(T.NEXT, 0, 0, 127)},
+  {id: 'tl-prev', dev: 'timeline', label: 'Previous preset (00A–63B)', make: () => act(T.PREV, 0, 0, 127)},
+  {id: 'tl-bypass', dev: 'timeline', label: 'Bypass on/off', make: () => act(T.TOGGLE, 0, 102, 0, 127)},
+  {id: 'tl-on', dev: 'timeline', label: 'Engage', make: () => act(T.CC, 0, 102, 127)},
+  {id: 'tl-off', dev: 'timeline', label: 'Bypass', make: () => act(T.CC, 0, 102, 0)},
+  {id: 'tl-tap', dev: 'timeline', label: 'Tap tempo', make: () => act(T.CC, 0, 93, 127)},
+  {id: 'tl-a', dev: 'timeline', label: 'A footswitch (held)', shortOnly: true, make: () => act(T.MOMENTARY, 0, 80, 0, 127)},
+  {id: 'tl-b', dev: 'timeline', label: 'B footswitch (held)', shortOnly: true, make: () => act(T.MOMENTARY, 0, 82, 0, 127)},
+  {id: 'tl-inf', dev: 'timeline', label: 'Infinite repeats on/off', make: () => act(T.TOGGLE, 0, 97, 127, 0)},
+  {id: 'tl-rec', dev: 'timeline', label: 'Looper record', make: () => act(T.CC, 0, 87, 127)},
+  {id: 'tl-play', dev: 'timeline', label: 'Looper play', make: () => act(T.CC, 0, 86, 127)},
+  {id: 'tl-stop', dev: 'timeline', label: 'Looper stop', make: () => act(T.CC, 0, 85, 127)},
+  {id: 'tl-undo', dev: 'timeline', label: 'Looper undo', make: () => act(T.CC, 0, 89, 127)},
+  {id: 'tl-redo', dev: 'timeline', label: 'Looper redo', make: () => act(T.CC, 0, 90, 127)},
+  {id: 'tl-rev', dev: 'timeline', label: 'Looper reverse', make: () => act(T.CC, 0, 94, 127)},
+  {id: 'tl-half', dev: 'timeline', label: 'Looper half/full speed', make: () => act(T.CC, 0, 95, 127)},
   // Wampler Terraform
-  {id: 'tf-pre', group: 'Wampler Terraform', label: 'Preset…', fields: [num('a', 'Preset', 1, 128, 1, -1)], make: f => act(T.PC, 0, f.a), match: x => x.type === T.PC, pedal: 'terraform'},
-  {id: 'tf-next', group: 'Wampler Terraform', label: 'Next preset', make: () => act(T.NEXT, 0, 0, 127), pedal: 'terraform'},
-  {id: 'tf-prev', group: 'Wampler Terraform', label: 'Previous preset', make: () => act(T.PREV, 0, 0, 127), pedal: 'terraform'},
-  // Generic MIDI
-  {id: 'none', group: 'Any MIDI device', label: 'Nothing', make: () => act(T.NONE)},
-  {id: 'pc', group: 'Any MIDI device', label: 'Program Change', generic: T.PC, fields: [num('a', 'Program (0–127)', 0, 127, 0)]},
-  {id: 'cc', group: 'Any MIDI device', label: 'Control Change', generic: T.CC, fields: [num('a', 'Controller', 0, 127, 0), num('b', 'Value', 0, 127, 127)]},
-  {id: 'toggle', group: 'Any MIDI device', label: 'CC toggle (on/off)', generic: T.TOGGLE, fields: [num('a', 'Controller', 0, 127, 0), num('b', '1st press value', 0, 127, 127), num('c', '2nd press value', 0, 127, 0)]},
-  {id: 'momentary', group: 'Any MIDI device', label: 'CC momentary (while held)', generic: T.MOMENTARY, shortOnly: true, fields: [num('a', 'Controller', 0, 127, 0), num('b', 'Value when pressed', 0, 127, 127), num('c', 'Value when released', 0, 127, 0)]},
-  {id: 'next', group: 'Any MIDI device', label: 'Next program', generic: T.NEXT, fields: [num('a', 'From program', 0, 127, 0), num('b', 'To program', 0, 127, 7)]},
-  {id: 'prev', group: 'Any MIDI device', label: 'Previous program', generic: T.PREV, fields: [num('a', 'From program', 0, 127, 0), num('b', 'To program', 0, 127, 7)]},
+  {id: 'tf-pre', dev: 'terraform', label: 'Preset…', make: () => act(T.PC), fields: [num('a', 'Preset', 1, 128, 1, -1)]},
+  {id: 'tf-next', dev: 'terraform', label: 'Next preset', make: () => act(T.NEXT, 0, 0, 127)},
+  {id: 'tf-prev', dev: 'terraform', label: 'Previous preset', make: () => act(T.PREV, 0, 0, 127)},
+  {id: 'tf-bypass', dev: 'terraform', label: 'Bypass on/off', make: () => act(T.TOGGLE, 0, 1, 0, 127)},
+  {id: 'tf-tap', dev: 'terraform', label: 'Tap tempo', make: () => act(T.CC, 0, 81, 0)},
+  {id: 'tf-fx', dev: 'terraform', label: 'Effect…', make: () => act(T.CC, 0, 2, 0), fields: [num('b', 'Effect (1–11)', 1, 11, 10, -1, v => TF_FX[v - 1])], match: x => x.type === T.CC && x.a === 2 && x.b <= 10},
+  {id: 'tf-rotary', dev: 'terraform', label: 'Rotary fast/slow', make: () => act(T.TOGGLE, 0, 9, 0, 127)},
+  {id: 'tf-route', dev: 'terraform', label: 'Routing normal / pre-post', make: () => act(T.TOGGLE, 0, 85, 127, 0)},
 ];
 for (const ch of CHOICES) {
-  if (ch.generic !== undefined) ch.make = f => act(ch.generic, 0, f.a ?? 0, f.b ?? 0, f.c ?? 0);
-  if (!ch.match) {
-    if (ch.generic !== undefined) ch.match = x => x.type === ch.generic;
-    else if (!ch.fields) { const t = ch.make(); ch.match = x => x.type === t.type && x.a === t.a && x.b === t.b && x.c === t.c; }
-    else { const k = ch.fields[0].key, t = ch.make({[k]: 0}); ch.match = x => x.type === t.type && ['a', 'b', 'c'].filter(q => q !== k).every(q => x[q] === t[q]); }
-  }
+  if (ch.match) continue;
+  const t = ch.make(), free = (ch.fields || []).flatMap(f => f.keys);
+  ch.match = x => x.type === t.type && ['a', 'b', 'c'].filter(q => !free.includes(q)).every(q => x[q] === t[q]);
 }
 const CH_BY_ID = Object.fromEntries(CHOICES.map(c => [c.id, c]));
+/** a new action for a choice, with its fields at their defaults */
+function makeChoice(c) { const n = c.make(); (c.fields || []).forEach(f => fset(f, n, f.def)); return n; }
+const commandsFor = (dev, slot) => CHOICES.filter(c => (c.dev === dev || c.dev === '*') && !(c.shortOnly && slot % 2));
 
-// Pick the best choice for an action, preferring the pedal the user works with
+// Pick the best choice for an action: the pedal chosen for this press, then the one the user works with
 function choiceFor(x, slot) {
-  const pref = state.pedalHint;
+  if (x.type === T.NONE) return CH_BY_ID.none;
   const fits = CHOICES.filter(c => c.match(x) && !(c.shortOnly && slot % 2));
-  return fits.find(c => c.pedal && c.pedal === pref) || fits.find(c => !c.pedal && !c.generic && c.id !== 'none' && c.group !== 'Any MIDI device') ||
-         fits.find(c => !c.pedal) || fits[0] || CH_BY_ID.none;
+  const want = state.slotDev[slot] || state.pedalHint;
+  return fits.find(c => c.dev === want) || fits.find(c => c.dev === 'any') || fits[0] || CH_BY_ID.none;
+}
+function deviceFor(slot) {
+  const x = state.cfg.actions[slot];
+  if (state.slotDev[slot]) return state.slotDev[slot];
+  if (x.type === T.NONE) return state.pedalHint || 'any';
+  const c = choiceFor(x, slot);
+  return c.dev === '*' ? 'any' : c.dev;
 }
 
 function describe(x, slot) {
@@ -340,8 +423,9 @@ function describe(x, slot) {
   if (x.type === T.NONE) return 'Nothing';
   const c = choiceFor(x, slot);
   let d = c.label.replace('…', '');
-  if (c.fields) d += ' ' + c.fields.map(f => x[f.key] - f.offset).join('/');
+  if (c.fields) d += ' ' + c.fields.map(f => { const v = fget(f, x); return f.fmt ? f.fmt(v) : v; }).join('/');
   if (c.id === 'pc') d = 'PC ' + x.a;
+  if (c.id === 'pcbank') d = 'Bank ' + x.b + ' PC ' + x.a;
   if (c.id === 'cc') d = 'CC ' + x.a + ' = ' + x.b;
   if (c.id === 'toggle') d = 'CC ' + x.a + ' toggle ' + x.b + '/' + x.c;
   if (c.id === 'momentary') d = 'CC ' + x.a + ' held ' + x.b + '/' + x.c;
@@ -352,23 +436,27 @@ function describe(x, slot) {
 
 // ------------------------------------------------------------ templates
 const TEMPLATES = {
+  // the original two button MIDI Muppet HX, as it came
   original: () => ({...defaultConfig(), profile: 1, twoSwitches: true, pos: [1, 0, 2, 3], red: 25, actions: [act(0), act(0), act(0), act(0),
       act(T.CC, 0, 64, 127), act(T.HXTUNER), act(T.TOGGLE, 0, 6, 127, 0), act(T.TOGGLE, 0, 70, 0, 127)], hint: 'hx'}),
+  // Switches: 1 bottom right, 2 bottom left, 3 top right, 4 top left. [short, long] per switch.
   hx: () => ({...defaultConfig(), profile: 1, actions: [act(0), act(0), act(0), act(0),
       act(T.CC, 0, 64, 127), act(T.HXTUNER), act(T.TOGGLE, 0, 6, 127, 0), act(T.TOGGLE, 0, 70, 0, 127)], hint: 'hx'}),
-  hx4: () => ({...defaultConfig(), profile: 0, actions: [act(T.CC, 0, 69, 9), act(T.HXTUNER), act(T.CC, 0, 69, 8), act(T.CC, 0, 64, 127),
-      act(T.CC, 0, 52, 127), act(T.CC, 0, 72, 0), act(T.CC, 0, 53, 127), act(T.CC, 0, 72, 127)], hint: 'hx'}),
-  rc500: () => ({...defaultConfig(), hint: 'rc500'}),
-  rc500nav: () => ({...defaultConfig(), actions: [act(T.PREV, 0, 0, 98), act(0), act(T.NEXT, 0, 0, 98), act(0),
-      act(T.PC, 0, 0), act(0), act(T.PC, 0, 1), act(0)], hint: 'rc500'}),
-  terraform: () => ({...defaultConfig(), hint: 'terraform'}),
-  terraformnav: () => ({...defaultConfig(), actions: [act(T.PREV, 0, 0, 127), act(0), act(T.NEXT, 0, 0, 127), act(0),
-      act(T.PC, 0, 0), act(0), act(T.PC, 0, 1), act(0)], hint: 'terraform'}),
-  empty: () => ({...defaultConfig(), actions: Array.from({length: 8}, () => act(0))}),
+  md200: () => ({...defaultConfig(), actions: [act(T.NEXT, 0, 1, 4), act(0), act(T.PREV, 0, 1, 4), act(T.PC, 0, 0),
+      act(T.MOMENTARY, 0, 80, 127, 0), act(0), act(T.TOGGLE, 0, 27, 0, 127), act(0)], hint: 'md200'}),
+  rc500: () => ({...defaultConfig(), actions: [act(T.NEXT, 0, 0, 98), act(0), act(T.PREV, 0, 0, 98), act(0),
+      act(T.PC, 0, 1), act(T.PC, 0, 3), act(T.PC, 0, 0), act(T.PC, 0, 2)], hint: 'rc500'}),
+  iridium: () => ({...defaultConfig(), actions: [act(T.NEXT, 0, 0, 126), act(0), act(T.PREV, 0, 0, 126), act(T.PCBANK, 0, 0, 0),
+      act(T.MOMENTARY, 0, 27, 127, 0), act(0), act(T.TOGGLE, 0, 102, 0, 127), act(T.TOGGLE, 0, 21, 127, 0)], hint: 'iridium'}),
+  timeline: () => ({...defaultConfig(), actions: [act(T.NEXT, 0, 0, 127), act(T.CC, 0, 85, 127), act(T.PREV, 0, 0, 127), act(T.CC, 0, 86, 127),
+      act(T.CC, 0, 93, 127), act(T.CC, 0, 87, 127), act(T.TOGGLE, 0, 102, 0, 127), act(T.TOGGLE, 0, 97, 127, 0)], hint: 'timeline'}),
+  terraform: () => ({...defaultConfig(), actions: [act(T.NEXT, 0, 0, 127), act(0), act(T.PREV, 0, 0, 127), act(T.PC, 0, 0),
+      act(T.CC, 0, 81, 0), act(T.TOGGLE, 0, 9, 0, 127), act(T.TOGGLE, 0, 1, 0, 127), act(0)], hint: 'terraform'}),
+  empty: () => ({...defaultConfig(), actions: Array.from({length: 8}, () => act(0)), hint: 'any'}),
 };
 
 // ------------------------------------------------------------ state + UI
-const state = {cfg: defaultConfig(), sel: 0, dirty: false, pedalHint: null, live: new Set()};
+const state = {cfg: defaultConfig(), sel: 0, dirty: false, pedalHint: null, slotDev: Array(8).fill(null), live: new Set()};
 const $ = id => document.getElementById(id);
 
 function setDirty(d) { state.dirty = d; $('dirty').hidden = !d || !pedal.connected; }
@@ -384,7 +472,7 @@ function renderPedal() {
     ${c.twoSwitches ? '<rect x="10" y="110" width="280" height="170" rx="22" fill="url(#enc)" stroke="#0b0d11" stroke-width="2"/>'
                     : '<rect x="10" y="10" width="280" height="430" rx="26" fill="url(#enc)" stroke="#0b0d11" stroke-width="2"/>'}`;
   const ledY = c.twoSwitches ? 190 : 215;
-  s += `<circle cx="150" cy="${ledY}" r="11" fill="#9aa3ad"/><circle cx="150" cy="${ledY}" r="6.5" fill="${pedal.connected ? '#48d17a' : '#e7ecef'}" id="ledDot"/>`;
+  s += `<circle cx="150" cy="${ledY}" r="11" fill="#9aa3ad"/><circle cx="150" cy="${ledY}" r="6.5" fill="#3a2a2a" id="ledDot"/><circle cx="150" cy="${ledY}" r="13" fill="none" id="ledGlow" opacity="0"/>`;
   $('pedal').setAttribute('viewBox', c.twoSwitches ? '0 100 300 190' : '0 0 300 450');
   for (let b = 0; b < nSwitches(); b++) {
     const [x, y] = (c.twoSwitches ? SWITCH_XY_2 : SWITCH_XY)[c.pos[b] % (c.twoSwitches ? 2 : 4)];
@@ -404,6 +492,8 @@ function renderPedal() {
   $('pedal').innerHTML = s;
   $('pedal').querySelectorAll('.sw').forEach(g => {
     g.onclick = () => select(+g.dataset.b);
+    g.onpointerdown = () => Led.press(+g.dataset.b, true);
+    g.onpointerup = () => Led.press(+g.dataset.b, false);
     g.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); select(+g.dataset.b); } };
   });
   // legend
@@ -414,6 +504,7 @@ function renderPedal() {
     return `<li data-b="${b}" class="${state.sel === b ? 'sel' : ''}${state.live.has(b) ? ' live' : ''}"><b class="n">${b + 1}</b><span>${esc(t)}<small>${posName(c, b)} · pin ${PINS[b]}</small></span></li>`;
   }).join('');
   $('legend').querySelectorAll('li').forEach(li => li.onclick = () => select(+li.dataset.b));
+  Led.paint();
 }
 
 const hexPts = (x, y, r) => Array.from({length: 6}, (_, i) => { const a = Math.PI / 6 + i * Math.PI / 3; return (x + r * Math.cos(a)).toFixed(1) + ',' + (y + r * Math.sin(a)).toFixed(1); }).join(' ');
@@ -421,6 +512,93 @@ const short = t => t.length > 19 ? t.slice(0, 18) + '…' : t;
 const esc = t => String(t).replace(/[&<>"]/g, m => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[m]));
 
 function select(b) { if (b >= nSwitches()) return; state.sel = b; renderPedal(); renderButton(); }
+
+/* ------------------------------------------------------------ the LED in the picture
+ * Behaves like the real pedal's bicolor LED (see the firmware): green/red blinking in setup mode,
+ * three quick green flashes when the firmware starts as a foot switch, and – when a switch is
+ * pressed – the flashes the pedal gives while you play (or green/red while held, or a faint glow). */
+const Led = {
+  g: 0, r: 0, base: 'idle', timer: null, seq: [], program: 0, toggled: Array(8).fill(false),
+  level() { return Math.max(0.25, state.cfg.red / 255); },
+  paint() {
+    const d = $('ledDot'), gl = $('ledGlow'); if (!d) return;
+    const g = this.g, r = this.r;
+    if (!g && !r) { d.setAttribute('fill', '#3a2a2a'); gl.setAttribute('opacity', 0); return; }
+    const mix = `rgb(${Math.round(255 * Math.min(1, r * 1.2))},${Math.round(225 * Math.min(1, g * 1.2) + 30 * r)},${Math.round(60 * g)})`;
+    d.setAttribute('fill', mix);
+    gl.setAttribute('fill', mix); gl.setAttribute('opacity', (0.35 * Math.max(g, r)).toFixed(2));
+  },
+  set(g, r) { this.g = g; this.r = r; this.paint(); },
+  stop() { clearTimeout(this.timer); clearInterval(this.blinkTimer); this.timer = this.blinkTimer = null; this.seq = []; },
+  /** what the LED shows when nothing else is going on */
+  rest() {
+    this.stop();
+    if (this.base === 'off') return this.set(0, 0);
+    if (this.base === 'setup') {
+      let phase = false;
+      const tick = () => { phase = !phase; this.set(phase ? 1 : 0, phase ? 0 : 1); };
+      tick(); this.blinkTimer = setInterval(tick, 400);
+      return;
+    }
+    const c = state.cfg;                         // playing: HX mode colour, a faint glow or off
+    if (c.profile === 1) return this.set(0, this.level());
+    this.set(0, c.idleGlow && c.ledMode !== 'off' ? this.level() / 16 + 0.06 : 0);
+  },
+  setup() { this.base = 'setup'; this.rest(); },
+  off() { this.base = 'off'; this.rest(); },
+  /** firmware starting as a foot switch: "I'm alive" */
+  alive() { this.base = 'idle'; this.program = 0; this.toggled.fill(false); this.flash('g', 3, 60); },
+  flash(col, times, ms = 70) {
+    this.stop();
+    const lv = this.level(); let n = times * 2;
+    const step = () => {
+      if (n <= 0) return this.rest();
+      const on = n % 2 === 0; n--;
+      this.set(on && col === 'g' ? lv : 0, on && col === 'r' ? lv : 0);
+      this.timer = setTimeout(step, ms);
+    };
+    step();
+  },
+  /** what the real pedal's LED does when an action runs (firmware runAction) */
+  action(slot, released) {
+    const c = state.cfg, x = c.actions[slot], col = slot & 1 ? 'r' : 'g';
+    if (c.ledMode !== 'flash') return;
+    switch (x.type) {
+      case T.PC: case T.PCBANK: this.program = x.a; return this.flash(col, this.program % 4 + 1);
+      case T.NEXT: case T.PREV: {
+        const lo = Math.min(x.a, x.b), hi = Math.max(x.a, x.b), up = x.type === T.NEXT;
+        if (this.program < lo || this.program > hi) this.program = up ? lo : hi;
+        else this.program = up ? (this.program >= hi ? lo : this.program + 1) : (this.program <= lo ? hi : this.program - 1);
+        return this.flash(col, this.program % 4 + 1);
+      }
+      case T.CC: return this.flash(col, 1);
+      case T.TOGGLE: this.toggled[slot] = !this.toggled[slot]; return this.flash(this.toggled[slot] ? 'g' : 'r', 1);
+      case T.MOMENTARY: if (!released) this.flash(col, 1); return;
+      case T.HXTUNER: return this.flash(col, 2);
+    }
+  },
+  /* a switch going down / up, like the firmware's generic and HX button handling */
+  down: {}, longT: {},
+  press(b, isDown) {
+    const c = state.cfg, s0 = b * 2, x = c.actions[s0];
+    if (c.profile === 1 && b < 2) { if (isDown) this.flash('r', 2); return; }   // HX UP/DN: scroll flashes
+    const momentary = x.type === T.MOMENTARY, hasLong = !momentary && c.actions[s0 + 1].type !== T.NONE;
+    if (isDown) {
+      this.down[b] = Date.now();
+      if (c.ledMode === 'hold') { this.stop(); this.set(this.level(), 0); }
+      if (momentary || !hasLong) { this.down[b] = -1; this.action(s0, false); }
+      else this.longT[b] = setTimeout(() => {
+        this.down[b] = -1;
+        if (c.ledMode === 'hold') this.set(0, this.level()); else this.action(s0 + 1, false);
+      }, c.longMs);
+    } else {
+      clearTimeout(this.longT[b]);
+      if (momentary) this.action(s0, true);
+      else if (this.down[b] > 0) this.action(s0, false);       // released before the long press
+      if (c.ledMode === 'hold') this.rest();
+    }
+  },
+};
 
 function renderButton() {
   const b = state.sel, c = state.cfg;
@@ -457,33 +635,47 @@ function renderButton() {
 }
 
 function pressEditor(slot, title, tag, disabled) {
-  const x = state.cfg.actions[slot], ch = choiceFor(x, slot);
-  const groups = [...new Set(CHOICES.map(c => c.group))];
-  const opts = groups.map(g => `<optgroup label="${g}">` + CHOICES.filter(c => c.group === g && !(c.shortOnly && slot % 2))
-    .map(c => `<option value="${c.id}"${c === ch ? ' selected' : ''}>${c.label}</option>`).join('') + '</optgroup>').join('');
+  const x = state.cfg.actions[slot], ch = choiceFor(x, slot), dev = deviceFor(slot);
+  const devOpts = DEVICES.map(d => `<option value="${d.id}"${d.id === dev ? ' selected' : ''}>${d.name}</option>`).join('');
+  const cmds = commandsFor(dev, slot);
+  if (!cmds.includes(ch)) cmds.push(ch);                 // an action the pedal list doesn't know: still show it
+  const opts = cmds.map(c => `<option value="${c.id}"${c === ch ? ' selected' : ''}>${c.label}</option>`).join('');
   let fields = '';
-  if (ch.fields) fields = ch.fields.map(f => `<label class="f"><span>${f.label}</span><input type="number" data-k="${f.key}" data-o="${f.offset}" min="${f.min}" max="${f.max}" value="${x[f.key] - f.offset}"></label>`).join('');
+  if (ch.fields) fields = ch.fields.map((f, i) => `<label class="f"><span>${f.label}</span><input type="number" data-f="${i}" min="${f.min}" max="${f.max}" value="${fget(f, x)}">${f.fmt ? `<small class="hint" data-fmt="${i}">${f.fmt(fget(f, x))}</small>` : ''}</label>`).join('');
   const chans = `<label class="f"><span>MIDI channel</span><select data-ch>${['<option value="0">Pedal setting</option>', ...Array.from({length: 16}, (_, i) => `<option value="${i + 1}"${x.ch === i + 1 ? ' selected' : ''}>${i + 1}</option>`)].join('')}</select></label>`;
+  const note = DEV_BY_ID[dev].note && x.type !== T.NONE ? `<div class="hint" style="margin-top:6px">${DEV_BY_ID[dev].note}</div>` : '';
   return `<div class="press${disabled ? ' disabled' : ''}" data-slot="${slot}"><h3>${title} <span class="tag">${tag}</span></h3>
-    <div class="row"><label>Action</label><select data-choice${disabled ? ' disabled' : ''}>${opts}</select></div>
-    ${x.type !== T.NONE && !disabled ? `<div class="fields">${fields}${chans}</div>` : ''}</div>`;
+    <div class="row"><label>Pedal</label><select data-dev${disabled ? ' disabled' : ''}>${devOpts}</select></div>
+    <div class="row"><label>Command</label><select data-choice${disabled ? ' disabled' : ''}>${opts}</select></div>
+    ${x.type !== T.NONE && !disabled ? `<div class="fields">${fields}${chans}</div>${note}` : ''}</div>`;
 }
 
 function wirePress(slot) {
   const el = document.querySelector(`.press[data-slot="${slot}"]`);
   const x = state.cfg.actions[slot];
+  el.querySelector('[data-dev]').onchange = e => {
+    const dev = e.target.value;
+    state.slotDev[slot] = dev; state.pedalHint = dev;
+    if (x.type !== T.NONE && !commandsFor(dev, slot).some(c => c.id !== 'none' && c.match(x))) {
+      const first = commandsFor(dev, slot).find(c => c.id !== 'none');
+      const n = makeChoice(first); n.ch = x.ch; state.cfg.actions[slot] = n;
+    }
+    changed(); renderButton();
+  };
   el.querySelector('[data-choice]').onchange = e => {
     const c = CH_BY_ID[e.target.value];
-    const f = {}; (c.fields || []).forEach(d => f[d.key] = d.def + d.offset);
-    if (c.pedal) state.pedalHint = c.pedal;
-    const n = c.make(f); n.ch = x.ch;
+    if (c.dev !== '*') state.slotDev[slot] = c.dev;
+    const n = makeChoice(c); n.ch = x.ch;
     state.cfg.actions[slot] = n;
     changed(); renderButton();
   };
-  el.querySelectorAll('input[data-k]').forEach(inp => inp.onchange = () => {
-    const min = +inp.min, max = +inp.max;
+  const ch = choiceFor(x, slot);
+  el.querySelectorAll('input[data-f]').forEach(inp => inp.onchange = () => {
+    const f = ch.fields[+inp.dataset.f], min = +inp.min, max = +inp.max;
     let v = Math.round(+inp.value); if (isNaN(v)) v = min; v = Math.max(min, Math.min(max, v)); inp.value = v;
-    x[inp.dataset.k] = v + +inp.dataset.o; changed();
+    fset(f, x, v);
+    const fm = el.querySelector(`[data-fmt="${inp.dataset.f}"]`); if (fm) fm.textContent = f.fmt(v);
+    changed();
   });
   const chs = el.querySelector('[data-ch]'); if (chs) chs.onchange = () => { x.ch = +chs.value; changed(); };
 }
@@ -515,7 +707,7 @@ $('hardware').onchange = e => {
   if (state.sel >= nSwitches()) state.sel = 0;
   changed(); renderAll();
 };
-$('profile').onchange = e => { state.cfg.profile = +e.target.value; if (state.cfg.profile === 1) state.pedalHint = 'hx'; changed(); renderAll(); };
+$('profile').onchange = e => { state.cfg.profile = +e.target.value; if (state.cfg.profile === 1) { state.pedalHint = 'hx'; state.slotDev = state.slotDev.map(d => d || 'hx'); } changed(); renderAll(); };
 $('channel').onchange = e => { state.cfg.channel = +e.target.value; changed(); };
 $('longMs').oninput = e => { state.cfg.longMs = +e.target.value; renderSettings(); changed(); renderButton(); };
 $('ledMode').onchange = e => { state.cfg.ledMode = e.target.value; changed(); renderSettings(); };
@@ -525,7 +717,7 @@ $('red').onchange = e => { state.cfg.red = +e.target.value; changed(); };
 $('looper').onchange = e => { state.cfg.looper = e.target.checked; changed(); };
 $('btnTemplate').onclick = () => {
   const t = $('template').value; if (!t) return;
-  const n = TEMPLATES[t](); state.pedalHint = n.hint || null; delete n.hint;
+  const n = TEMPLATES[t](); state.pedalHint = n.hint || null; state.slotDev = Array(8).fill(n.hint || null); delete n.hint;
   n.channel = state.cfg.channel; n.ledInverted = state.cfg.ledInverted; n.idleGlow = state.cfg.idleGlow; n.red = state.cfg.red;
   if (t !== 'original') { n.pos = state.cfg.pos.slice(); n.twoSwitches = state.cfg.twoSwitches; }
   if (state.sel >= (n.twoSwitches ? 2 : 4)) state.sel = 0;
@@ -534,7 +726,7 @@ $('btnTemplate').onclick = () => {
 
 // ------------------------------------------------------------ file import / export
 $('btnExport').onclick = () => {
-  const data = {format: 'midi-muppet-4btn', version: CFG_VERSION, setup: hex(encode(state.cfg)), pedalHint: state.pedalHint, readable: state.cfg};
+  const data = {format: 'midi-muppet-4btn', version: CFG_VERSION, setup: hex(encode(state.cfg)), pedalHint: state.pedalHint, devices: state.slotDev, readable: state.cfg};
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([JSON.stringify(data, null, 1)], {type: 'application/json'}));
   a.download = 'midi-muppet-setup.json'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
@@ -546,6 +738,7 @@ $('importFile').onchange = async e => {
     const d = JSON.parse(await f.text());
     if (d.format !== 'midi-muppet-4btn') throw new Error('not a MIDI Muppet setup file');
     state.cfg = decode(unhex(d.setup)); state.pedalHint = d.pedalHint || null;
+    state.slotDev = Array.isArray(d.devices) && d.devices.length === 8 ? d.devices.map(v => DEV_BY_ID[v] ? v : null) : Array(8).fill(null);
     changed(); renderAll(); msg('pedalMsg', 'Setup imported. Save it to the pedal to use it.', 'ok');
   } catch (err) { msg('pedalMsg', 'Could not import: ' + err.message, 'err'); }
   e.target.value = '';
@@ -859,9 +1052,11 @@ async function connect() {
     const fromPedal = decode(unhex(c.slice(2)));
     if (state.dirty && !confirm('Load the setup from the pedal? Your unsaved changes here will be replaced.\n\nCancel keeps your changes, so you can save them to the pedal.')) {
       setDirty(true);
-    } else { state.cfg = fromPedal; setDirty(false); }
+    } else { state.cfg = fromPedal; state.slotDev = Array(8).fill(null); setDirty(false); }
     status('Connected', 'on');
-    $('pedalInfo').innerHTML = `MIDI Muppet config firmware ${pedal.info.fw} · ${pedal.info.mcu === '168' ? 'ATmega168' : 'ATmega328P'} · ${pedal.info.mhz} MHz. The LED blinks green/red while the pedal is in setup mode.`;
+    $('pedalInfo').innerHTML = `MIDI Muppet config firmware ${pedal.info.fw} · ${pedal.info.mcu === '168' ? 'ATmega168' : 'ATmega328P'} · ${pedal.info.mhz} MHz. The LED blinks green/red while the pedal is in setup mode.`
+      + (pedal.info.fw < FW_LATEST ? ' <b>A newer firmware is available</b> – click “Install firmware” to update (your setup is kept).' : '');
+    Led.setup();
     renderAll(); updateButtons();
   } catch (e) {
     log('connect failed: ' + (e && e.message));
@@ -880,16 +1075,19 @@ async function disconnect() {
   await pedal.close(); pedal.port = null;
   status('Not connected'); $('pedalInfo').textContent = 'Not connected.';
   state.live.clear(); setDirty(state.dirty); renderPedal(); updateButtons();
+  Led.alive();      // the pedal leaves setup mode and starts as a foot switch
 }
 
 function lost() {
   pedal.connected = false; pedal.port = null;
   status('Connection lost', 'err'); $('pedalInfo').textContent = 'The pedal was unplugged.';
+  Led.off();
   updateButtons(); renderPedal();
 }
 
 function buttonEvent(b, down) {
   if (b >= nSwitches()) return;
+  Led.press(b, down);
   if (down) { state.live.add(b); if (state.sel !== b) { state.sel = b; renderButton(); } }
   else state.live.delete(b);
   renderPedal();
@@ -898,6 +1096,8 @@ function buttonEvent(b, down) {
 async function save() {
   $('btnSave').disabled = true; msg('pedalMsg', 'Saving…');
   try {
+    if (pedal.info && pedal.info.fw < 5 && state.cfg.actions.some(x => x.type === T.PCBANK))
+      throw new Error('this setup uses bank + program (Strymon Iridium or TimeLine presets), which needs a newer firmware. Click “Install firmware” – your setup is kept – then save again.');
     const data = encode(state.cfg);
     const r = await pedal.request('W ' + hex(data), l => l === 'OK' || l.startsWith('ERR'), 3000);
     if (r !== 'OK') throw new Error(r);
@@ -911,7 +1111,7 @@ async function save() {
 async function readPedal() {
   try {
     const c = await pedal.request('R', l => l.startsWith('C '));
-    state.cfg = decode(unhex(c.slice(2))); setDirty(false); renderAll(); msg('pedalMsg', 'Setup read from the pedal.', 'ok');
+    state.cfg = decode(unhex(c.slice(2))); state.slotDev = Array(8).fill(null); setDirty(false); renderAll(); msg('pedalMsg', 'Setup read from the pedal.', 'ok');
   } catch (e) { msg('pedalMsg', 'Reading failed: ' + e.message, 'err'); }
 }
 
@@ -1037,6 +1237,7 @@ async function flash() {
   $('btnFlash').disabled = $('btnConnect').disabled = true;
   const prog = $('flashProgress'); prog.hidden = false; prog.value = 0;
   msg('flashMsg', 'Looking for the Arduino bootloader…');
+  Led.off();        // the bootloader doesn't drive the LED
   let stk = null, done = false;
   try {
     // Nano with new bootloader: 115200, old Nano / Pro Mini 328P: 57600, Nano / Pro Mini 168: 19200
@@ -1087,6 +1288,7 @@ async function flash() {
     done = true;
     try { localStorage.setItem('mm-mhz', mhz); localStorage.setItem('mm-boot-baud', String(bootBaud)); } catch (e) {}
     msg('flashMsg', `Firmware installed on the ${fw.name} (${mhz} MHz) ✓ Click “Connect pedal” to set it up.`, 'ok');
+    Led.alive();      // the new firmware starts: three quick green flashes
   } catch (e) {
     log('install failed: ' + e.message);
     msg('flashMsg', e.message === DEAD_STREAM_MSG ? DEAD_STREAM_MSG : e.message.startsWith('timeout') || e.message.startsWith('bootloader') ? 'Installing failed (' + e.message + '). Unplug the USB cable, plug it in again and retry. If it fails again, copy the technical log below and send it.' : e.message, 'err');
@@ -1113,7 +1315,7 @@ else if (useWebUsb()) navigator.usb.addEventListener?.('disconnect', e => { if (
 else navigator.serial.addEventListener?.('disconnect', e => { if (e.target === pedal.port && pedal.connected) { pedal.close(); lost(); } });
 window.addEventListener('beforeunload', e => { if (state.dirty && pedal.connected) { e.preventDefault(); e.returnValue = ''; } });
 window.__mm = {state, encode, decode, pedal, renderAll, CHOICES};   // for tests and the curious
-renderAll(); updateButtons();
+renderAll(); updateButtons(); Led.rest();
 </script>
 </body>
 </html>

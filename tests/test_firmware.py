@@ -63,7 +63,7 @@ class Sim:
 
 
 # ---- config blob (must match the firmware and the editor)
-NONE, PC, CC, TOGGLE, MOMENTARY, NEXT, PREV, HXTUNER = range(8)
+NONE, PC, CC, TOGGLE, MOMENTARY, NEXT, PREV, HXTUNER, PCBANK = range(9)
 
 
 def blob(profile=0, channel=0, flags=3, red=64, long10=80, pos=(3, 2, 1, 0), actions=None):
@@ -116,7 +116,7 @@ def suite(elf, mcu, mhz):
 
     # --- setup mode
     hello = setup(s)
-    check('hello reply', hello.split(b'\r\n')[0], b'MM4 4 %s 53 %d' % (b'168' if '168' in mcu else b'328', mhz))
+    check('hello reply', hello.split(b'\r\n')[0], b'MM4 5 %s 53 %d' % (b'168' if '168' in mcu else b'328', mhz))
     s.send('R'); s.run(50)
     check('read default config', s.take().strip(), b'C ' + blob().hex().upper().encode())
     press(s, 3, 100)
@@ -167,6 +167,14 @@ def suite(elf, mcu, mhz):
     s.pin(1, 0); s.run(60)
     check('config kept after power cycle', s.take(), b'\xB2\x34\x7F')
     s.pin(1, 1); s.run(100); s.take()
+
+    # --- bank + program (Strymon Iridium / TimeLine presets above 128)
+    setup(s)
+    cfg = blob(channel=2, actions=[(PCBANK, 0, 5, 1, 0), (NONE, 0, 0, 0, 0)] + [(NONE, 0, 0, 0, 0)] * 6)
+    s.send('W ' + cfg.hex()); s.run(400); s.take()
+    s.send('Q'); s.run(700); s.take()
+    press(s, 1, 80)
+    check('bank + program: CC 0 = bank, then PC', s.take(), b'\xB2\x00\x01\xC2\x05')
 
     # --- HX Stomp profile
     setup(s)

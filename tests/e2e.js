@@ -206,12 +206,18 @@ async function waitText(sel, re, ms) {
   pending.push('pin 3 1'); await sleep(300);
 
   // 4. edit: switch 1 short = HX tap tempo, long = RC-500 next memory; switch 3 long = CC toggle 80
+  // each press has two lists: the pedal, then that pedal's commands
   await page.click('#legend li[data-b="0"]');
+  await page.select('.press[data-slot="0"] select[data-dev]', 'hx');
   await page.select('.press[data-slot="0"] select[data-choice]', 'hx-tap');
+  await page.select('.press[data-slot="1"] select[data-dev]', 'rc500');
+  const rcCmds = await page.$$eval('.press[data-slot="1"] select[data-choice] option', o => o.map(x => x.value));
+  check('the command list follows the chosen pedal (RC-500)', rcCmds.includes('rc-next') && !rcCmds.includes('hx-tap'), rcCmds.join(','));
   await page.select('.press[data-slot="1"] select[data-choice]', 'rc-next');
   await page.click('#legend li[data-b="2"]');
+  await page.select('.press[data-slot="5"] select[data-dev]', 'any');
   await page.select('.press[data-slot="5"] select[data-choice]', 'toggle');
-  await page.$eval('.press[data-slot="5"] input[data-k="a"]', e => { e.value = '80'; e.dispatchEvent(new Event('change')); });
+  await page.$eval('.press[data-slot="5"] input[data-f="0"]', e => { e.value = '80'; e.dispatchEvent(new Event('change')); });
   await page.select('.press[data-slot="5"] select[data-ch]', '10');
   await page.select('#channel', '1');
   check('unsaved marker shows', !(await page.$eval('#dirty', e => e.hidden)));
