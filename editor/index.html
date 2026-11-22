@@ -764,6 +764,7 @@ $('btnTemplate').onclick = () => {
 // ------------------------------------------------------------ file import / export
 $('btnExport').onclick = () => {
   const data = {format: 'midi-muppet-max', version: CFG_VERSION, setup: hex(encode(state.cfg)), pedalHint: state.pedalHint, devices: state.slotDev, readable: state.cfg};
+  if (window.AndroidApp) { AndroidApp.saveFile('midi-muppet-max-setup.json', JSON.stringify(data, null, 1)); return; }   // the Android app
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([JSON.stringify(data, null, 1)], {type: 'application/json'}));
   a.download = 'midi-muppet-max-setup.json'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);

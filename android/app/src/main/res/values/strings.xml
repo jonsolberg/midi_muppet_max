@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">MIDI Muppet Max</string>
+    <string name="saved">Setup saved</string>
+    <string name="save_failed">Could not save: %1$s</string>
+</resources>

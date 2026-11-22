@@ -134,6 +134,44 @@ const FAKE_USB = () => {
   Object.defineProperty(navigator, 'usb', {value: {requestDevice: async o => { window.__usbFilters = o.filters; return dev; }, addEventListener() {}}});
 };
 
+
+// ---------------------------------------------------------------- fake Android app bridge
+// As in the Android app: no Web Serial, no WebUSB – only window.AndroidUsb (UsbBridge.java), turned into
+// navigator.usb by android/app/src/main/assets/android-usb.js. The fake "native" side drives the fake CH340.
+const FAKE_ANDROID = fakeUsbSrc => {
+  const realDP = Object.defineProperty;
+  let fake;
+  Object.defineProperty = function (o, p, d) { if (o === navigator && p === 'usb') { fake = d.value; return o; } return realDP.apply(this, arguments); };
+  (0, eval)('(' + fakeUsbSrc + ')()');
+  Object.defineProperty = realDP;
+  const TYPES = ['standard', 'class', 'vendor'], RECIP = ['device', 'interface', 'endpoint', 'other'];
+  const b64 = u8 => { let s = ''; for (const x of u8) s += String.fromCharCode(x); return btoa(s); };
+  const unb64 = s => Uint8Array.from(atob(s || ''), c => c.charCodeAt(0));
+  const bytes = r => new Uint8Array(r.data.buffer, r.data.byteOffset, r.data.byteLength);
+  let dev;
+  const ops = {
+    async request(filters) { dev = await fake.requestDevice({filters: JSON.parse(filters)}); await dev.selectConfiguration(1);
+      window.__androidRequested = true; return JSON.stringify({id: '/dev/bus/usb/001/002', vendorId: dev.vendorId, productId: dev.productId, configuration: dev.configuration}); },
+    async granted() { return '[]'; },
+    async open() { await dev.open(); return true; },
+    async close() { await dev.close(); return true; },
+    async claim() { return true; },
+    async release() { return true; },
+    async ctrl(id, rt, request, value, index, data, length) {
+      const s = {requestType: TYPES[(rt >> 5) & 3], recipient: RECIP[rt & 31], request, value, index};
+      if (rt & 0x80) return b64(bytes(await dev.controlTransferIn(s, length)));
+      const u = unb64(data);
+      await (u.length ? dev.controlTransferOut(s, u.buffer) : dev.controlTransferOut(s));
+      return u.length;
+    },
+    async bulkIn(id, ep, length) { return b64(bytes(await dev.transferIn(ep, length))); },
+    async bulkOut(id, ep, data) { const u = unb64(data); await dev.transferOut(ep, u); return u.length; },
+  };
+  window.AndroidUsb = {call(id, method, args) {
+    ops[method](...JSON.parse(args)).then(v => window.__usbDone(id, true, v), e => window.__usbDone(id, false, e.message));
+  }};
+};
+
 // ---------------------------------------------------------------- tests
 let failures = 0;
 const check = (name, ok, extra = '') => { if (!ok) failures++; console.log((ok ? 'PASS ' : 'FAIL ') + name + (ok ? '' : ' ' + extra)); };
@@ -154,7 +192,11 @@ async function waitText(sel, re, ms) {
   await page.exposeFunction('__simReset', () => { pending.push('reset'); });
   await page.exposeFunction('__simOpen', (open, baud) => { portOpen = open; if (open) { pending.push('baud ' + baud); pending.push('reset'); } });
   await page.exposeFunction('__simBaud', b => { pending.push('baud ' + b); });
-  if (process.env.USB_CH340) {
+  if (process.env.ANDROID_APP) {
+    await page.setUserAgent('Mozilla/5.0 (Linux; Android 16; Pixel 9; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/148.0.0.0 Mobile Safari/537.36');
+    await page.evaluateOnNewDocument(FAKE_ANDROID, FAKE_USB.toString());
+    await page.evaluateOnNewDocument(require('fs').readFileSync(require('path').join(__dirname, '../android/app/src/main/assets/android-usb.js'), 'utf8'));
+  } else if (process.env.USB_CH340) {
     await page.setUserAgent('Mozilla/5.0 (Linux; Android 16; Pixel 9) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Mobile Safari/537.36');
     await page.evaluateOnNewDocument(FAKE_USB);
   } else await page.evaluateOnNewDocument(FAKE_SERIAL, !!process.env.FIREFOX_LIKE, !!process.env.FIREFOX_DEAD);
@@ -191,7 +233,8 @@ async function waitText(sel, re, ms) {
   await page.click('#btnConnect');
   const st = await waitText('#statusText', /^Connected|Not connected/, 20000);
   check('connects to the pedal', st === 'Connected', st + ' / ' + await text('#pedalMsg'));
-  if (process.env.USB_CH340) check('went through WebUSB (CH340 driver)', /usb: ch340 ready/.test(await text('#log')));
+  if (process.env.USB_CH340 || process.env.ANDROID_APP) check('went through WebUSB (CH340 driver)', /usb: ch340 ready/.test(await text('#log')));
+  if (process.env.ANDROID_APP) check('used the Android app bridge', await page.evaluate(() => !!window.__androidRequested));
   const info = await text('#pedalInfo');
   check('shows firmware, chip and clock: ' + info, info.includes(mcu === 'atmega168' ? 'ATmega168' : 'ATmega328P') && info.includes(MHZ + ' MHz'));
   const legend = await page.$$eval('#legend li', l => l.map(x => x.textContent));
@@ -224,6 +267,7 @@ async function waitText(sel, re, ms) {
   await page.click('#btnSave');
   const sm = await waitText('#pedalMsg', /✓|failed/, 15000);
   check('saves to the pedal: ' + sm, /✓/.test(sm), sm);
+  if (process.env.DUMPLOG) console.log('status=', await text('#statusText').catch(e=>e.message), 'saveDisabled=', await page.$eval('#btnSave', e => e.disabled), 'LOG:', await page.evaluate(() => LOG.slice(-30).join('\n')), 'errors', errors);
   const want = await page.evaluate(() => Array.from(__mm.encode(__mm.state.cfg), b => b.toString(16).padStart(2, '0')).join('').toUpperCase());
   const ee = await simQuery('eeprom 53', 'EE ');
   check('pedal EEPROM matches the editor', ee === want, `\n ee   ${ee}\n want ${want}`);

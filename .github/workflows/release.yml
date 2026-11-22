@@ -1,11 +1,11 @@
 name: Release
-# Publishes firmware/*.hex and the editor as release v<VERSION> whenever they change on main.
+# Publishes firmware/*.hex, the editor and the Android app as release v<VERSION> whenever they change on main.
 # Bump VERSION to start a new release; otherwise the files of the current one are replaced.
 
 on:
   push:
     branches: [main]
-    paths: ["VERSION", "firmware/**", "editor/index.html", ".github/workflows/release.yml"]
+    paths: ["VERSION", "firmware/**", "editor/index.html", "android/**", ".github/workflows/release.yml"]
   workflow_dispatch:
 
 permissions:
@@ -16,6 +16,33 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Decode signing key
+        env:
+          KEYSTORE_B64: ${{ secrets.SIGNING_KEYSTORE_B64 }}
+        run: |
+          if [ -n "$KEYSTORE_B64" ]; then
+            echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/release.jks"
+            echo "SIGNING_KEYSTORE=$RUNNER_TEMP/release.jks" >> "$GITHUB_ENV"
+          else
+            echo "::warning::No signing key secret – the APK will be debug-signed."
+          fi
+
+      - name: Build the Android app
+        env:
+          SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
+          SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
+          SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew --no-daemon assembleRelease
+
       - name: Publish release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -25,10 +52,12 @@ jobs:
           mkdir out
           cp firmware/*.hex out/
           cp editor/index.html out/midi-muppet-max-editor.html
+          cp android/app/build/outputs/apk/release/app-release.apk out/MidiMuppetMax.apk
+          cp out/MidiMuppetMax.apk "out/MidiMuppetMax-$V.apk"
           if gh release view "$TAG" >/dev/null 2>&1; then
             gh release upload "$TAG" out/* --clobber
           else
             gh release create "$TAG" out/* --target "$GITHUB_SHA" --latest \
               --title "MIDI Muppet Max $V" \
-              --notes "Firmware 5 and the web editor. Open the editor at https://jonsolberg.github.io/midi_muppet_max/ – it installs the firmware for you. The .hex files are for flashing by hand; midi-muppet-max-editor.html is the editor to use offline."
+              --notes "Firmware 5, the web editor and the Android app (MidiMuppetMax.apk – allow installing unknown apps when Android asks). Open the editor at https://jonsolberg.github.io/midi_muppet_max/ – it installs the firmware for you. The .hex files are for flashing by hand; midi-muppet-max-editor.html is the editor to use offline."
           fi

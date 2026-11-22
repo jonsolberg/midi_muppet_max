@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- USB serial chips on Arduino Nano / Pro Mini boards and adapters -->
+<resources>
+    <usb-device vendor-id="6790" />   <!-- WCH CH340/CH341 -->
+    <usb-device vendor-id="1027" />   <!-- FTDI -->
+    <usb-device vendor-id="4292" />   <!-- Silicon Labs CP210x -->
+    <usb-device vendor-id="9025" />   <!-- Arduino -->
+    <usb-device vendor-id="10755" />  <!-- Arduino (arduino.org) -->
+</resources>
