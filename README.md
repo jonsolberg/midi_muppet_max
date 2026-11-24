@@ -12,7 +12,7 @@ Install the firmware, choose what every switch does and save it to the pedal –
 app with a USB OTG cable. No Arduino IDE needed. To install the APK, allow your browser or file manager to
 *install unknown apps* when Android asks.
 
-## Hardware
+## Example
 
 
 <img src="images/pedalboard.jpg" alt="Pedalboard with Midimuppet Max controlling eight presets on a Strymon Iridium" width="565">
