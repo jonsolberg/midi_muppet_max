@@ -14,11 +14,7 @@ app with a USB OTG cable. No Arduino IDE needed. To install the APK, allow your 
 
 ## Hardware
 
-<p>
-<img src="images/pedal_top.jpg" alt="MIDI Muppet Max, top" width="280">
-</p><p>Midi Muppet Max Top view</p>
-<img src="images/pedal_front.jpg" alt="MIDI Muppet Max, MIDI and power sockets" width="280">
-   Midi Muppet Max, MIDI and power sockets
+
 <img src="images/pedalboard.jpg" alt="Pedalboard with Midimuppet Max controlling eight presets on a Strymon Iridium" width="565">
    Midi Muppet Max controlling the presets on a Strymon Iridium amp and cab simulator
 </p>
@@ -126,7 +122,11 @@ by holding a switch at power-up. The firmware is built for 16 MHz (Nano, Pro Min
 3.3 V) boards.
 
 ## Hardware
-
+<p>
+<img src="images/pedal_top.jpg" alt="MIDI Muppet Max, top" width="280">
+</p><p>Midi Muppet Max Top view</p>
+<img src="images/pedal_front.jpg" alt="MIDI Muppet Max, MIDI and power sockets" width="280">
+   Midi Muppet Max, MIDI and power sockets
 Same build as the original MIDI Muppet HX, with two extra foot switches:
 
 | Arduino pin | Connected to |
