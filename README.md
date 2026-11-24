@@ -15,7 +15,7 @@ app with a USB OTG cable. No Arduino IDE needed. To install the APK, allow your 
 <p>
 <img src="images/pedal_top.jpg" alt="MIDI Muppet Max, top" width="280">
 <img src="images/pedal_front.jpg" alt="MIDI Muppet Max, MIDI and power sockets" width="280">
-<img src="images/pedalboard.jpg" alt="Pedalboard with Midimuppet Max controlling eight presets on a Strymon Iridium" width="560">
+<img src="images/pedalboard.jpg" alt="Pedalboard with Midimuppet Max controlling eight presets on a Strymon Iridium" width="570">
    
 </p>
 
