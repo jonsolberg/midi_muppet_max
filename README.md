@@ -12,6 +12,8 @@ Install the firmware, choose what every switch does and save it to the pedal –
 app with a USB OTG cable. No Arduino IDE needed. To install the APK, allow your browser or file manager to
 *install unknown apps* when Android asks.
 
+## Hardware
+
 <p>
 <img src="images/pedal_top.jpg" alt="MIDI Muppet Max, top" width="280">
 </p><p>Midi Muppet Max Top view</p>
