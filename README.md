@@ -1,4 +1,4 @@
-# MIDI Muppet Max
+# MIDI Muppet Max (web+Android)
 
 An Arduino MIDI foot switch that you set up from your browser or Android phone, in two versions: **MIDI Muppet Max** (four
 buttons) and **MIDI Muppet HX** (two buttons). Pick your pedal, pick a command for every switch and save it
